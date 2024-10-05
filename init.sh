@@ -217,3 +217,4 @@ Run the `install.sh` script to set up the project environment:
 
 ```bash
 bash install.sh
+```
