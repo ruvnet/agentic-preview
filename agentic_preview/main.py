@@ -5,9 +5,9 @@ import shutil
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 import logging
 import uuid  # For generating unique identifiers
 
@@ -24,17 +24,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+deployments = {}  # key: app_name, value: deployment info
+
 class DeployRequest(BaseModel):
     repo: str
     branch: str
     args: Optional[List[str]] = []
+    memory: Optional[int] = 2048  # Memory in MB, default to 2048 MB (2GB)
 
     class Config:
         json_schema_extra = {
             "example": {
                 "repo": "your-username/your-repo",
                 "branch": "main",
-                "args": ["--build-arg", "ENV=production"]
+                "args": ["--build-arg", "ENV=production"],
+                "memory": 2048
             }
         }
 
@@ -73,7 +77,7 @@ async def stop_instance(app_name: str):
     except Exception as e:
         logger.error(f"Error stopping app {app_name}: {e}")
 
-async def deploy_app(repo: str, branch: str, args: List[str], app_name: str, repo_dir: str):
+async def deploy_app(repo: str, branch: str, args: List[str], app_name: str, repo_dir: str, memory: int):
     try:
         # Check if Dockerfile exists; if not, return an error
         dockerfile_path = os.path.join(repo_dir, 'Dockerfile')
@@ -96,6 +100,9 @@ app = "{app_name}"
 
 [env]
   PORT = "8080"
+
+[vm]
+  memory_mb = {memory}
 
 [[services]]
   http_checks = []
@@ -134,23 +141,43 @@ app = "{app_name}"
         deploy_cmd.extend(args)
         await execute_command(deploy_cmd, cwd=repo_dir)
 
-        # Get the app URL
-        app_info_json = await execute_command(['flyctl', 'info', '--json', '--app', app_name])
-        app_info = json.loads(app_info_json)
-        preview_url = app_info.get('Hostname', f"{app_name}.fly.dev")
-        logger.info(f"Preview URL: {preview_url}")
+        # Get the app URL using 'flyctl status'
+        app_status_json = await execute_command(['flyctl', 'status', '--json', '--app', app_name])
+        app_status = json.loads(app_status_json)
+
+        # Extract the hostname
+        hostname = app_status.get('Hostname', f"{app_name}.fly.dev")
+        logger.info(f"Preview URL: {hostname}")
 
         # Schedule the instance to stop after RUN_TIME_LIMIT seconds
         asyncio.create_task(stop_instance(app_name))
 
-        return {"preview_url": f"https://{preview_url}"}
+        # Update deployment status
+        deployments[app_name] = {
+            "status": "Deployed",
+            "preview_url": f"https://{hostname}",
+            "message": "Deployment successful.",
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
     except Exception as e:
         logger.error(f"Error during deployment: {e}")
+        # Update deployment status
+        deployments[app_name] = {
+            "status": "Failed",
+            "preview_url": None,
+            "message": f"Deployment failed: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat()
+        }
         # Capture the traceback for debugging
         import traceback
         traceback_str = ''.join(traceback.format_exception(None, e, e.__traceback__))
         logger.error(f"Stack trace: {traceback_str}")
+        # Clean up the app on Fly.io
+        try:
+            await execute_command(['flyctl', 'apps', 'destroy', app_name, '--yes'])
+        except Exception as destroy_exc:
+            logger.error(f"Error destroying app after failed deployment: {destroy_exc}")
         raise e
     finally:
         # Ensure cleanup happens regardless of success or failure
@@ -166,8 +193,9 @@ async def deploy(deploy_request: DeployRequest):
         repo = deploy_request.repo
         branch = deploy_request.branch
         args = deploy_request.args or []
+        memory = deploy_request.memory or 2048  # Default to 2048 MB if not specified
 
-        logger.info(f"Deploying repository: {repo}, branch: {branch}, args: {args}")
+        logger.info(f"Deploying repository: {repo}, branch: {branch}, args: {args}, memory: {memory}MB")
 
         # Clone the repository
         repo_name = repo.split('/')[-1]
@@ -207,14 +235,23 @@ async def deploy(deploy_request: DeployRequest):
         app_name = f"preview-{repo_name.lower()}-{branch.lower() if branch else 'default'}-{timestamp}"
         logger.info(f"Generated app name: {app_name}")
 
-        # Await the deployment function
-        deployment_result = await deploy_app(repo, branch, args, app_name, repo_dir)
+        # Start the deployment in the background
+        asyncio.create_task(deploy_app(repo, branch, args, app_name, repo_dir, memory))
+
+        # Store the deployment status
+        deployments[app_name] = {
+            "status": "Deploying",
+            "preview_url": None,
+            "message": "Deployment started.",
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
         return {
             "app_name": app_name,
-            "preview_url": deployment_result["preview_url"],
-            "message": "Deployment successful."
+            "message": "Deployment started.",
+            "status_url": f"/status/{app_name}"
         }
+
     except HTTPException as http_exc:
         logger.error(f"HTTP exception occurred: {http_exc.detail}")
         # Clean up in case of HTTPException
@@ -234,11 +271,54 @@ async def deploy(deploy_request: DeployRequest):
 async def check_status(app_name: str):
     try:
         logger.info(f"Checking status for app: {app_name}")
-        status_output = await execute_command(['flyctl', 'status', '--app', app_name])
-        return {"status": status_output}
+        if app_name in deployments:
+            return deployments[app_name]
+        else:
+            logger.warning(f"No deployment found for app: {app_name}")
+            raise HTTPException(status_code=404, detail=f"No deployment found for app: {app_name}")
     except Exception as e:
         logger.error(f"Error checking app status: {e}")
         raise HTTPException(status_code=500, detail=f"Error checking app status: {str(e)}")
+
+@app.get("/logs/{app_name}")
+async def stream_logs(app_name: str):
+    if app_name not in deployments:
+        logger.warning(f"No deployment found for app: {app_name}")
+        raise HTTPException(status_code=404, detail=f"No deployment found for app: {app_name}")
+
+    async def log_streamer():
+        try:
+            process = await asyncio.create_subprocess_exec(
+                'flyctl', 'logs', '--app', app_name,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            while True:
+                line = await process.stdout.readline()
+                if not line:
+                    break
+                log_entry = line.decode('utf-8').strip()
+
+                # Format the log entry to match the GitHub Copilot LLM API response
+                formatted_response = {
+                    "choices": [
+                        {
+                            "delta": {
+                                "content": log_entry + "\n"
+                            },
+                            "finish_reason": None,
+                            "index": 0
+                        }
+                    ]
+                }
+
+                # Yield the formatted response as a JSON string
+                yield f"data: {json.dumps(formatted_response)}\n\n"
+        except Exception as e:
+            logger.error(f"Error streaming logs for app {app_name}: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(log_streamer(), media_type="text/event-stream")
 
 @app.get("/apps")
 async def list_apps():
