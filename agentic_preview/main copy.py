@@ -348,11 +348,8 @@ async def clone_repo(request: CloneRequest):
     temp_dir = f"/tmp/{repo_id}"
 
     try:
-        # Construct the full GitHub repository URL
-        clone_url = f"https://github.com/{request.repo_url}.git"
-
         process = await asyncio.create_subprocess_exec(
-            "git", "clone", clone_url, temp_dir,
+            "git", "clone", request.repo_url, temp_dir,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -369,11 +366,6 @@ async def clone_repo(request: CloneRequest):
     except Exception as e:
         logger.error(f"Error cloning repository: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/repos")
-async def list_repo_ids():
-    return {"repo_ids": list(cloned_repos.keys())}
-
 
 @app.post("/explore")
 async def explore_repo(request: ExploreRequest):
