@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from fastapi.responses import RedirectResponse, StreamingResponse
 import logging
 import uuid  # For generating unique identifiers
+from dotenv import load_dotenv  # P2994
 
 app = FastAPI()
 
