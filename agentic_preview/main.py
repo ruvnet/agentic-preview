@@ -5,12 +5,11 @@ import shutil
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.responses import RedirectResponse, StreamingResponse
 import logging
-import uuid  # For generating unique identifiers
-import subprocess
+import uuid
 
 app = FastAPI()
 
