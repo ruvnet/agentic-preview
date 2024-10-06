@@ -2,8 +2,6 @@ import subprocess
 import json
 import os
 import asyncio
-import sqlite3
-from contextlib import contextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, validator
@@ -11,35 +9,9 @@ from typing import List, Optional, Dict
 
 app = FastAPI()
 
-DATABASE_NAME = "aider_projects.db"
-
-def init_db():
-    with sqlite3.connect(DATABASE_NAME) as conn:
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            user_id TEXT NOT NULL,
-            UNIQUE(name, user_id)
-        )
-        """)
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT UNIQUE NOT NULL
-        )
-        """)
-
-@contextmanager
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE_NAME)
-    try:
-        yield conn
-    finally:
-        conn.close()
-
-# Call this function when your app starts
-init_db()
+# In-memory storage for projects and users
+projects: Dict[str, Dict] = {}
+users: Dict[str, List[str]] = {}
 
 class AiderConfig(BaseModel):
     chat_mode: str = Field("code", example="code")
@@ -57,12 +29,15 @@ class AiderConfig(BaseModel):
                 raise ValueError(f"Invalid file path: {file}")
         return v
 
+# New function to update projects and users data
 def update_project_user_data(project_name: str, user_id: str):
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
-        cursor.execute("INSERT OR IGNORE INTO projects (name, user_id) VALUES (?, ?)", (project_name, user_id))
-        conn.commit()
+    project_id = f"{project_name}_{user_id}"
+    if project_id not in projects:
+        projects[project_id] = {"name": project_name, "user_id": user_id}
+    if user_id not in users:
+        users[user_id] = []
+    if project_name not in users[user_id]:
+        users[user_id].append(project_name)
 
 def run_aider(config: AiderConfig, project_path: str):
     command = [
@@ -143,23 +118,10 @@ async def execute_aider(config: AiderConfig):
 
 @app.get("/projects")
 async def list_projects():
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT name, user_id FROM projects")
-        projects = [{"name": name, "user_id": user_id} for name, user_id in cursor.fetchall()]
     return {"projects": projects}
 
 @app.get("/users")
 async def list_users():
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT users.user_id, GROUP_CONCAT(projects.name) as projects
-            FROM users
-            LEFT JOIN projects ON users.user_id = projects.user_id
-            GROUP BY users.user_id
-        """)
-        users = {user_id: projects.split(',') if projects else [] for user_id, projects in cursor.fetchall()}
     return {"users": users}
 
 # Don't remove this line
