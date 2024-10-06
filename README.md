@@ -104,6 +104,66 @@ You can pass custom deployment arguments in the `args` field of the deployment r
 
 If your repository does not contain a `fly.toml` file, Agentic Preview will generate one for you. You can customize the generated `fly.toml` by modifying the `deploy_app` function in `main.py`.
 
+## Agentic Editor
+
+The Agentic Editor is a powerful tool that provides various capabilities, API endpoints, and functions to enhance your development workflow. Below is an overview of its features, usage, and API endpoints.
+
+### Features
+
+- **RESTful API**: Provides a simple interface for executing Aider commands.
+- **Virtual Environment Management**: Ensures isolated execution of the Aider tool.
+- **Configurable Execution**: Supports various configuration options for customizing Aider's behavior.
+
+### Usage
+
+To start the FastAPI server, run the following command:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### API Endpoints
+
+#### **POST** `/run-aider`
+
+Execute the Aider tool with the provided configuration.
+
+##### Request Body
+
+- `chat_mode`: Mode for Aider chat (default: "code").
+- `edit_format`: Format for edits (default: "diff").
+- `model`: Model to use (default: "gpt-4").
+- `prompt`: Optional prompt message.
+- `files`: List of files to include.
+
+##### Example Request
+
+```json
+{
+  "chat_mode": "code",
+  "edit_format": "diff",
+  "model": "gpt-4",
+  "prompt": "Initial setup",
+  "files": ["main.py", "utils.py"]
+}
+```
+
+##### Example Response
+
+The response will stream the output from the Aider tool, providing real-time feedback on the execution process.
+
+#### **GET** `/projects`
+
+List all projects.
+
+#### **GET** `/users`
+
+List all users.
+
+### Detailed Documentation
+
+For more detailed information on the architecture, configuration, installation, introduction, and usage of the Agentic Editor, please refer to the [Agentic Editor Documentation](./agentic_editor/docs/README.md).
+
 ## License
 
 MIT License
