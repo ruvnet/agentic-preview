@@ -2,44 +2,56 @@ import subprocess
 import json
 import os
 import asyncio
-import sqlite3
-from contextlib import contextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, and_, inspect, text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship, Session
+from sqlalchemy.exc import IntegrityError
+from datetime import datetime, timedelta
+import shutil
 
-app = FastAPI()
+# Database setup
+DATABASE_URL = "sqlite:///./aider_projects.db"
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-DATABASE_NAME = "aider_projects.db"
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, unique=True, index=True)
+    projects = relationship("Project", back_populates="user")
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    user_id = Column(String, ForeignKey("users.user_id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user = relationship("User", back_populates="projects")
 
 def init_db():
-    with sqlite3.connect(DATABASE_NAME) as conn:
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            user_id TEXT NOT NULL,
-            UNIQUE(name, user_id)
-        )
-        """)
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT UNIQUE NOT NULL
-        )
-        """)
-
-@contextmanager
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE_NAME)
-    try:
-        yield conn
-    finally:
-        conn.close()
-
-# Call this function when your app starts
+    Base.metadata.create_all(bind=engine)
+    
+    # Add new columns if they don't exist
+    with engine.connect() as conn:
+        inspector = inspect(engine)
+        existing_columns = [col['name'] for col in inspector.get_columns('projects')]
+        if 'created_at' not in existing_columns:
+            conn.execute(text("ALTER TABLE projects ADD COLUMN created_at DATETIME"))
+        if 'last_updated' not in existing_columns:
+            conn.execute(text("ALTER TABLE projects ADD COLUMN last_updated DATETIME"))
+    
 init_db()
+
+app = FastAPI()
 
 class AiderConfig(BaseModel):
     chat_mode: str = Field("code", example="code")
@@ -57,12 +69,72 @@ class AiderConfig(BaseModel):
                 raise ValueError(f"Invalid file path: {file}")
         return v
 
-def update_project_user_data(project_name: str, user_id: str):
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
-        cursor.execute("INSERT OR IGNORE INTO projects (name, user_id) VALUES (?, ?)", (project_name, user_id))
-        conn.commit()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def update_project_user_data(project_name: str, user_id: str, db: Session):
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        user = User(user_id=user_id)
+        db.add(user)
+    
+    project = db.query(Project).filter(Project.name == project_name, Project.user_id == user_id).first()
+    if not project:
+        project = Project(name=project_name, user_id=user_id)
+        db.add(project)
+    else:
+        project.last_updated = datetime.utcnow()
+    
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+
+def remove_old_projects(db: Session, age: Optional[timedelta] = None, user_id: Optional[str] = None):
+    query = db.query(Project)
+    
+    if age:
+        cutoff_date = datetime.utcnow() - age
+        query = query.filter(Project.last_updated < cutoff_date)
+    
+    if user_id:
+        query = query.filter(Project.user_id == user_id)
+    
+    projects_to_remove = query.all()
+    
+    for project in projects_to_remove:
+        project_path = os.path.join("projects", f"{project.name}_{project.user_id}")
+        if os.path.exists(project_path):
+            shutil.rmtree(project_path)
+        db.delete(project)
+    
+    db.commit()
+    
+    return [{"name": p.name, "user_id": p.user_id, "last_updated": p.last_updated} for p in projects_to_remove]
+
+def cleanup_projects(db: Session):
+    projects_dir = "projects"
+    existing_projects = set(os.listdir(projects_dir))
+    
+    # Get all projects from the database
+    db_projects = db.query(Project).all()
+    
+    removed_projects = []
+    for project in db_projects:
+        project_folder = f"{project.name}_{project.user_id}"
+        if project_folder not in existing_projects:
+            # Remove the project from the database
+            db.delete(project)
+            removed_projects.append({"name": project.name, "user_id": project.user_id})
+    
+    # Commit the changes
+    db.commit()
+    
+    return removed_projects
 
 def run_aider(config: AiderConfig, project_path: str):
     command = [
@@ -104,25 +176,43 @@ def stream_aider_output(process):
         if output == '' and process.poll() is not None:
             break
         if output:
-            yield json.dumps({
-                "type": "streamContent",
-                "content": output.strip()
-            }) + "\n"
+            yield output.strip()
 
     rc = process.poll()
     if rc != 0:
         stderr = process.stderr.read()
-        yield json.dumps({
-            "type": "error",
-            "content": f"Aider process exited with code {rc}. Stderr: {stderr.strip()}"
-        }) + "\n"
+        yield f"Aider process exited with code {rc}. Stderr: {stderr.strip()}"
+
+def process_aider_output(output_lines):
+    processed_output = {
+        "summary": [],
+        "file_changes": {},
+        "commands": [],
+        "messages": []
+    }
+    current_file = None
+
+    for line in output_lines:
+        if line.startswith("Applied edit to "):
+            file = line.split("Applied edit to ")[-1]
+            processed_output["summary"].append(f"Modified file: {file}")
+            current_file = file
+            processed_output["file_changes"][current_file] = []
+        elif line.startswith(("+++", "---")) and current_file:
+            processed_output["file_changes"][current_file].append(line)
+        elif line.startswith(("docker ", "pip ", "python ")):
+            processed_output["commands"].append(line)
+        else:
+            processed_output["messages"].append(line)
+
+    return processed_output
 
 @app.get("/")
 async def redirect_to_docs():
     return RedirectResponse(url="/docs")
 
 @app.post("/run-aider")
-async def execute_aider(config: AiderConfig):
+async def execute_aider(config: AiderConfig, db: Session = Depends(get_db)):
     project_path = os.path.join("projects", f"{config.project_name}_{config.user_id}")
     
     # Create project directory if it doesn't exist
@@ -136,31 +226,63 @@ async def execute_aider(config: AiderConfig):
                 f.write('')  # Create an empty file
 
     # Update project and user data
-    update_project_user_data(config.project_name, config.user_id)
+    update_project_user_data(config.project_name, config.user_id, db)
 
     aider_process = await asyncio.to_thread(run_aider, config, project_path)
-    return stream_aider_output(aider_process)
+    
+    # Collect and process the output
+    output_lines = []
+    for line in stream_aider_output(aider_process):
+        output_lines.append(line)
+
+    processed_output = process_aider_output(output_lines)
+
+    return {
+        "project_name": config.project_name,
+        "user_id": config.user_id,
+        "aider_output": processed_output
+    }
 
 @app.get("/projects")
-async def list_projects():
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT name, user_id FROM projects")
-        projects = [{"name": name, "user_id": user_id} for name, user_id in cursor.fetchall()]
-    return {"projects": projects}
+async def list_projects(db: Session = Depends(get_db)):
+    projects = db.query(Project).all()
+    return {"projects": [{"name": project.name, "user_id": project.user_id, "created_at": project.created_at, "last_updated": project.last_updated} for project in projects]}
 
 @app.get("/users")
-async def list_users():
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT users.user_id, GROUP_CONCAT(projects.name) as projects
-            FROM users
-            LEFT JOIN projects ON users.user_id = projects.user_id
-            GROUP BY users.user_id
-        """)
-        users = {user_id: projects.split(',') if projects else [] for user_id, projects in cursor.fetchall()}
-    return {"users": users}
+async def list_users(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return {"users": {user.user_id: [{"name": project.name, "created_at": project.created_at, "last_updated": project.last_updated} for project in user.projects] for user in users}}
+
+@app.post("/cleanup")
+async def cleanup(db: Session = Depends(get_db)):
+    removed_projects = cleanup_projects(db)
+    return {
+        "message": f"Cleanup completed. Removed {len(removed_projects)} projects.",
+        "removed_projects": removed_projects
+    }
+
+@app.post("/remove_projects")
+async def remove_projects(
+    days: Optional[int] = Query(None, description="Remove projects older than this many days"),
+    hours: Optional[int] = Query(None, description="Remove projects older than this many hours"),
+    minutes: Optional[int] = Query(None, description="Remove projects older than this many minutes"),
+    user_id: Optional[str] = Query(None, description="Remove projects for this user"),
+    db: Session = Depends(get_db)
+):
+    age = None
+    if days:
+        age = timedelta(days=days)
+    elif hours:
+        age = timedelta(hours=hours)
+    elif minutes:
+        age = timedelta(minutes=minutes)
+    
+    removed_projects = remove_old_projects(db, age, user_id)
+    
+    return {
+        "message": f"Removed {len(removed_projects)} projects.",
+        "removed_projects": removed_projects
+    }
 
 # Don't remove this line
 if __name__ == "__main__":
