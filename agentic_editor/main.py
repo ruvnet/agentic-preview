@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, and_, inspect, text
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, Float, and_, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, Session
 from sqlalchemy.exc import IntegrityError
@@ -35,6 +35,7 @@ class Project(Base):
     user_id = Column(String, ForeignKey("users.user_id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    total_cost = Column(Float, default=0.0)
     user = relationship("User", back_populates="projects")
 
 def init_db():
@@ -48,6 +49,8 @@ def init_db():
             conn.execute(text("ALTER TABLE projects ADD COLUMN created_at DATETIME"))
         if 'last_updated' not in existing_columns:
             conn.execute(text("ALTER TABLE projects ADD COLUMN last_updated DATETIME"))
+        if 'total_cost' not in existing_columns:
+            conn.execute(text("ALTER TABLE projects ADD COLUMN total_cost FLOAT DEFAULT 0.0"))
     
 init_db()
 
@@ -61,6 +64,7 @@ class AiderConfig(BaseModel):
     files: List[str] = Field(default_factory=list, example=["main.py", "utils.py"])
     project_name: str = Field(..., example="sonnet")
     user_id: str = Field(..., example="test")
+    file_list: Optional[List[str]] = Field(None, example=["auth_service.py", "api_gateway.py", "microservice_example.py"])
 
     @validator('files')
     def validate_files(cls, v):
@@ -168,7 +172,9 @@ def run_aider(config: AiderConfig, project_path: str):
         cwd=project_path,
         env=env
     )
-    return process
+    
+    output, error = process.communicate()
+    return output, error
 
 def stream_aider_output(process):
     while True:
@@ -190,20 +196,16 @@ def process_aider_output(output_lines):
         "commands": [],
         "messages": []
     }
-    current_file = None
+    current_message = []
 
     for line in output_lines:
-        if line.startswith("Applied edit to "):
-            file = line.split("Applied edit to ")[-1]
-            processed_output["summary"].append(f"Modified file: {file}")
-            current_file = file
-            processed_output["file_changes"][current_file] = []
-        elif line.startswith(("+++", "---")) and current_file:
-            processed_output["file_changes"][current_file].append(line)
-        elif line.startswith(("docker ", "pip ", "python ")):
+        if line.startswith("pip "):
             processed_output["commands"].append(line)
         else:
-            processed_output["messages"].append(line)
+            current_message.append(line)
+
+    if current_message:
+        processed_output["messages"].append("\n".join(current_message))
 
     return processed_output
 
@@ -228,19 +230,19 @@ async def execute_aider(config: AiderConfig, db: Session = Depends(get_db)):
     # Update project and user data
     update_project_user_data(config.project_name, config.user_id, db)
 
-    aider_process = await asyncio.to_thread(run_aider, config, project_path)
+    output, error = await asyncio.to_thread(run_aider, config, project_path)
     
-    # Collect and process the output
-    output_lines = []
-    for line in stream_aider_output(aider_process):
-        output_lines.append(line)
+    processed_output = process_aider_output(output.split('\n'))
 
-    processed_output = process_aider_output(output_lines)
+    # Estimate cost (you may need to adjust this based on actual usage)
+    estimated_cost = len(config.prompt or '') * 0.00001  # Example cost calculation
+    update_project_cost(db, config.project_name, config.user_id, estimated_cost)
 
     return {
         "project_name": config.project_name,
         "user_id": config.user_id,
-        "aider_output": processed_output
+        "aider_output": processed_output,
+        "estimated_cost": estimated_cost
     }
 
 @app.get("/projects")
@@ -288,3 +290,170 @@ async def remove_projects(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=5000)
+def update_project_cost(db: Session, project_name: str, user_id: str, cost: float):
+    project = db.query(Project).filter(Project.name == project_name, Project.user_id == user_id).first()
+    if project:
+        project.total_cost += cost
+        project.last_updated = datetime.utcnow()
+        db.commit()
+import json
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+@app.post("/architect")
+async def architect_mode(project_name: str, user_id: str, requirements: str, db: Session = Depends(get_db)):
+    project_path = os.path.join("projects", f"{project_name}_{user_id}")
+    os.makedirs(project_path, exist_ok=True)
+
+    prompt = f"""
+    Act as a software architect. Design a high-level system architecture based on these requirements: {requirements}
+    
+    Please provide your response in the following JSON format:
+    {{
+        "overall_architecture": "Brief description of the overall architecture",
+        "components": [
+            "Component 1 description",
+            "Component 2 description",
+            ...
+        ],
+        "files": [
+            {{
+                "name": "filename1.py",
+                "description": "Brief description of the file's purpose"
+            }},
+            {{
+                "name": "filename2.py",
+                "description": "Brief description of the file's purpose"
+            }},
+            ...
+        ],
+        "additional_notes": [
+            "Note 1",
+            "Note 2",
+            ...
+        ]
+    }}
+
+    Ensure that your response is a valid JSON object that can be parsed.
+    """
+
+    config = AiderConfig(
+        chat_mode="architect",
+        edit_format="diff",
+        model="claude-3-5-sonnet-20240620",
+        prompt=prompt,
+        files=[],
+        project_name=project_name,
+        user_id=user_id
+    )
+
+    output, error = await asyncio.to_thread(run_aider, config, project_path)
+    processed_output = process_aider_output(output.split('\n'))
+
+    logger.debug(f"Processed output: {processed_output}")
+
+    # Extract and parse the JSON response
+    architecture_design = extract_json_from_output(processed_output["messages"])
+
+    logger.debug(f"Extracted architecture design: {architecture_design}")
+
+    # Extract file list and create summary
+    file_list = []
+    architecture_summary = ""
+    if architecture_design:
+        file_list = [file["name"] for file in architecture_design.get("files", [])]
+        architecture_summary = f"Overall: {architecture_design.get('overall_architecture', 'N/A')}\n"
+        architecture_summary += f"Components: {', '.join(architecture_design.get('components', []))}\n"
+        architecture_summary += f"Files: {', '.join(file_list)}\n"
+        architecture_summary += f"Additional notes: {len(architecture_design.get('additional_notes', []))} note(s)"
+
+    # Estimate cost (you may need to adjust this based on actual usage)
+    estimated_cost = len(requirements) * 0.00001  # Example cost calculation
+    update_project_cost(db, project_name, user_id, estimated_cost)
+
+    return {
+        "project_name": project_name,
+        "user_id": user_id,
+        "architecture_design": architecture_design,
+        "file_list": file_list,
+        "architecture_summary": architecture_summary,
+        "raw_output": processed_output["messages"],
+        "estimated_cost": estimated_cost
+    }
+
+import re
+
+def extract_json_from_output(messages):
+    for message in messages:
+        try:
+            # Use regex to find JSON-like structure
+            json_match = re.search(r'\{.*\}', message, re.DOTALL)
+            if json_match:
+                json_str = json_match.group()
+                logger.debug(f"Extracted JSON string: {json_str}")
+                return json.loads(json_str)
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing JSON: {e}")
+            logger.debug(f"Problematic message: {message}")
+    logger.warning("No valid JSON found in the output")
+    return None  # Return None if no valid JSON is found
+
+@app.post("/editor")
+async def editor_mode(project_name: str, user_id: str, file_path: str, edit_instruction: str, db: Session = Depends(get_db)):
+    project_path = os.path.join("projects", f"{project_name}_{user_id}")
+    full_file_path = os.path.join(project_path, file_path)
+
+    if not os.path.exists(full_file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    config = AiderConfig(
+        chat_mode="edit",
+        edit_format="diff",
+        model="claude-3-5-sonnet-20240620",
+        prompt=f"Edit the file {file_path} according to these instructions: {edit_instruction}",
+        files=[file_path],
+        project_name=project_name,
+        user_id=user_id
+    )
+
+    output, error = await asyncio.to_thread(run_aider, config, project_path)
+    processed_output = process_aider_output(output.split('\n'))
+
+    # Estimate cost (you may need to adjust this based on actual usage)
+    estimated_cost = len(edit_instruction) * 0.00002  # Example cost calculation
+    update_project_cost(db, project_name, user_id, estimated_cost)
+
+    return {
+        "project_name": project_name,
+        "user_id": user_id,
+        "file_path": file_path,
+        "changes": processed_output,
+        "estimated_cost": estimated_cost
+    }
+
+@app.get("/cost-summary")
+async def get_cost_summary(project_name: Optional[str] = None, user_id: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(Project)
+    if project_name:
+        query = query.filter(Project.name == project_name)
+    if user_id:
+        query = query.filter(Project.user_id == user_id)
+    
+    projects = query.all()
+    
+    summary = {
+        "total_cost": sum(project.total_cost for project in projects),
+        "projects": [
+            {
+                "name": project.name,
+                "user_id": project.user_id,
+                "cost": project.total_cost,
+                "last_updated": project.last_updated
+            }
+            for project in projects
+        ]
+    }
+    
+    return summary
