@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { hello } from './hello';
 import { Link } from 'react-router-dom';
 import { getProjects } from '../api/api';
 
