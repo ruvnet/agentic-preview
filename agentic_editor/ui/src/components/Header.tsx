@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 const Header: React.FC = () => {
   return (
@@ -24,6 +25,15 @@ const Header: React.FC = () => {
           <ul className="flex space-x-4">
             <li><Link to="/" className="hover:text-blue-200">Projects</Link></li>
           </ul>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger className="menu-trigger">Options</DropdownMenu.Trigger>
+            <DropdownMenu.Content className="dropdown-content">
+              <DropdownMenu.Item className="dropdown-item">Profile</DropdownMenu.Item>
+              <DropdownMenu.Item className="dropdown-item">Settings</DropdownMenu.Item>
+              <DropdownMenu.Separator className="dropdown-separator" />
+              <DropdownMenu.Item className="dropdown-item">Logout</DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
         </nav>
       </div>
     </header>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Header from './components/Header';
+import SettingsDialog from './components/SettingsDialog';
 import ProjectList from './components/ProjectList';
 import ProjectDetails from './components/ProjectDetails';
 
@@ -14,6 +15,7 @@ function App() {
             <Route path="/" element={<ProjectList />} />
             <Route path="/project/:id" element={<ProjectDetails />} />
           </Routes>
+          <SettingsDialog />
         </main>
       </div>
     </Router>
