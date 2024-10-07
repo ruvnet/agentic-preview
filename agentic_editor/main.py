@@ -2,6 +2,7 @@ import subprocess
 import json
 import os
 import asyncio
+import logging
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, validator
@@ -12,6 +13,14 @@ from sqlalchemy.orm import sessionmaker, relationship, Session
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
 import shutil
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Database setup
 DATABASE_URL = "sqlite:///./aider_projects.db"
@@ -159,22 +168,41 @@ def run_aider(config: AiderConfig, project_path: str):
     api_key = env.get('OPENAI_API_KEY')
 
     if api_key is None:
+        logger.error("OPENAI_API_KEY is not set in the environment.")
         raise HTTPException(
             status_code=500,
             detail="OPENAI_API_KEY is not set in the environment."
         )
 
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True,
-        cwd=project_path,
-        env=env
-    )
-    
-    output, error = process.communicate()
-    return output, error
+    try:
+        logger.info(f"Running Aider command: {' '.join(command)}")
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+            cwd=project_path,
+            env=env
+        )
+        
+        output, error = process.communicate()
+        
+        if process.returncode != 0:
+            logger.error(f"Aider command failed with return code {process.returncode}")
+            logger.error(f"Error output: {error}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Aider command failed: {error}"
+            )
+        
+        logger.info("Aider command completed successfully")
+        return output, error
+    except Exception as e:
+        logger.exception("An error occurred while running Aider")
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred while running Aider: {str(e)}"
+        )
 
 def stream_aider_output(process):
     while True:
