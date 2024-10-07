@@ -49,7 +49,7 @@ const ProjectList: React.FC = () => {
     };
 
     fetchProjects();
-  }, []);
+  }, [id]);
 
   return (
     <div>
