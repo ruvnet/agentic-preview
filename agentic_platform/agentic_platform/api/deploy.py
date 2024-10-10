@@ -708,7 +708,7 @@ async def stream_aider_output(process):
     async for line in process.stdout:
         logger.info(line.decode().strip())
 @router.post("/docker", response_model=Dict[str, str])
-async def create_dockerfile(repo_id: str = Body(...), db: Session = Depends(get_db)):
+async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = Depends(get_db)):
     try:
         # Get the project path
         project = db.query(Project).filter(Project.id == repo_id).first()
@@ -722,13 +722,18 @@ async def create_dockerfile(repo_id: str = Body(...), db: Session = Depends(get_
         if os.path.exists(dockerfile_path):
             return {"message": "Dockerfile already exists"}
         
+        # Initialize git repository if not already initialized
+        await execute_command(['git', 'init'], cwd=project_path)
+        await execute_command(['git', 'add', '.'], cwd=project_path)
+        
         # Prepare the Aider command
         aider_command = [
             "aider",
+            "--yes-always",
             "--no-git",
             f"--work-dir={project_path}",
             "--model=gpt-4",
-            "--message=Create a Dockerfile for this project based on its structure and files."
+            "--message=Review the files and folder structure in this project. Identify the main application, its dependencies, and any specific requirements. Then, create a Dockerfile that can build and run this application. The Dockerfile should be optimized for production use and follow best practices. Include comments in the Dockerfile to explain each step."
         ]
         
         # Run Aider and stream output
