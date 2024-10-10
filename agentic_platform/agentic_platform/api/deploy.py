@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 import logging
 import uuid
 from sqlalchemy.orm import Session
-from ..crud import get_db
+from ..crud import get_db, update_project_user_data
 from ..models import Project
 from sqlalchemy.orm import Session
 from ..crud import get_db
@@ -391,7 +391,7 @@ async def clone_repo(request: CloneRequest = Body(
     description="GitHub repository URL to clone and user ID"
 )):
     repo_id = str(uuid.uuid4())
-    projects_dir = "/projects"
+    projects_dir = "projects"  # Changed from "/projects" to match the existing structure
     project_dir = os.path.join(projects_dir, repo_id)
 
     try:
@@ -415,16 +415,8 @@ async def clone_repo(request: CloneRequest = Body(
 
         # Update the database
         db = next(get_db())
-        new_project = Project(
-            id=repo_id,
-            name=request.repo_url.split('/')[-1],
-            user_id=request.user_id,
-            repo_url=request.repo_url,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        db.add(new_project)
-        db.commit()
+        project_name = request.repo_url.split('/')[-1]
+        update_project_user_data(project_name, request.user_id, db)
 
         logger.info(f"Repository cloned successfully with ID: {repo_id}")
         return {"repo_id": repo_id, "message": "Repository cloned successfully and project created"}
@@ -599,3 +591,24 @@ async def cleanup():
             del deployments[app_name]
         except Exception as e:
             logger.error(f"Error destroying app during cleanup: {e}")
+@router.get("/projects", 
+            response_model=List[Dict[str, Any]],
+            summary="List all projects",
+            description="Display all cloned GitHub repositories as projects")
+async def list_projects():
+    try:
+        db = next(get_db())
+        projects = db.query(Project).all()
+        return [
+            {
+                "id": project.id,
+                "name": project.name,
+                "user_id": project.user_id,
+                "created_at": project.created_at,
+                "updated_at": project.last_updated
+            }
+            for project in projects
+        ]
+    except Exception as e:
+        logger.error(f"Error listing projects: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
