@@ -1,192 +1,313 @@
 # Agentic Preview
 
-Agentic Preview is an asynchronous FastAPI backend service that allows users to deploy preview environments using Fly.io.
+Welcome to Agentic Preview, a cutting-edge, asynchronous FastAPI backend service that revolutionizes the way developers create, manage, and deploy applications. By seamlessly integrating the powerful capabilities of Agentic Editor and Agentic Preview into a unified Agentic Platform, we offer a comprehensive solution for modern software development workflows.
 
 ## Introduction
 
-Agentic Preview is designed to streamline the process of deploying preview environments for your applications. By leveraging the power of Fly.io, it allows you to quickly and easily deploy GitHub repositories to a live environment, providing a seamless way to test and showcase your applications.
+In today's fast-paced software development landscape, efficiency and automation are key. Agentic Preview addresses these needs by providing a robust platform that combines AI-assisted coding, streamlined project management, and effortless deployment capabilities. Our solution leverages the power of Fly.io for deployments and integrates advanced AI technologies to assist in coding tasks, making it an indispensable tool for developers of all levels.
+
+Agentic Preview is designed to be your all-in-one solution for:
+- Rapid prototyping and development
+- Efficient project management
+- Seamless deployment and preview of applications
+- AI-assisted code generation and refactoring
+
+Whether you're a solo developer working on a passion project or part of a large team tackling complex applications, Agentic Preview has the tools and features to streamline your workflow and boost productivity.
 
 ## Features
 
-- Deploys GitHub repositories to Fly.io
-- Asynchronous operations for improved performance
-- Configurable runtime limit for deployments
-- Cleans up resources after usage
-- Supports custom deployment arguments
-- Automatically generates `fly.toml` configuration if not present
-- Provides deployment status and logs
+Agentic Preview offers a rich set of features designed to enhance every aspect of your development process:
 
-## Benefits
+1. **Unified Agentic Platform**
+   - Seamlessly integrates Agentic Editor and Agentic Preview functionalities
+   - Provides a cohesive environment for coding, managing, and deploying projects
 
-- **Speed**: Quickly deploy your applications to a live environment.
-- **Efficiency**: Asynchronous operations ensure that deployments do not block other tasks.
-- **Flexibility**: Customize deployment arguments and configurations to suit your needs.
-- **Resource Management**: Automatically cleans up resources after usage, ensuring efficient use of resources.
-- **Ease of Use**: Simple API endpoints for deploying and managing applications.
+2. **AI-Assisted Coding with Aider**
+   - Harnesses the power of advanced language models for intelligent code editing
+   - Offers code generation, refactoring, and optimization suggestions
+   - Supports natural language prompts for code-related tasks
 
-## Usage
+3. **Asynchronous Deployments**
+   - Rapidly deploy GitHub repositories to Fly.io
+   - Ensures non-blocking operations for improved performance and responsiveness
 
-### Deploying an Application
+4. **Comprehensive Project Management**
+   - Create, update, and manage multiple projects effortlessly
+   - Track project status, history, and associated resources
 
-To deploy an application, send a POST request to the `/deploy` endpoint with the following JSON body:
+5. **User Management System**
+   - Manage user accounts and permissions
+   - Associate users with specific projects for collaborative development
 
-```json
-{
-  "repo": "username/repository",
-  "branch": "main",
-  "args": ["--build-arg", "ENV=production"]
-}
-```
+6. **Intelligent Resource Management**
+   - Automatically cleans up resources after usage
+   - Implements smart allocation and deallocation of computing resources
 
-### Checking Deployment Status
+7. **Customizable Deployments**
+   - Supports custom deployment arguments and configurations
+   - Allows fine-tuning of deployment processes to meet specific project needs
 
-To check the status of a deployment, send a GET request to the `/status/{app_name}` endpoint, where `{app_name}` is the name of the deployed application.
+8. **Real-time Logging and Monitoring**
+   - Stream deployment and application logs in real-time
+   - Monitor application performance and status effortlessly
 
-### Streaming Logs
+9. **Robust Database Integration**
+   - Utilizes SQLAlchemy for efficient and reliable data management
+   - Supports complex queries and data operations
 
-To stream logs for a deployed application, send a GET request to the `/logs/{app_name}` endpoint, where `{app_name}` is the name of the deployed application.
+10. **RESTful API**
+    - Well-documented API endpoints for easy integration with other tools and services
+    - Follows best practices for API design and implementation
+
+11. **Containerization Support**
+    - Includes Dockerfile for easy containerization of applications
+    - Ensures consistency across different development and deployment environments
 
 ## Installation
 
+Before diving into the world of Agentic Preview, let's ensure you have everything set up correctly. Follow these comprehensive installation steps to get started:
+
 ### Prerequisites
 
-1. Install Fly.io CLI (flyctl):
+1. **Python**: Agentic Preview requires Python 3.8 or higher. You can download it from [python.org](https://www.python.org/downloads/).
+
+2. **Poetry**: We use Poetry for dependency management. Install it by following the instructions at [python-poetry.org](https://python-poetry.org/docs/#installation).
+
+3. **Fly.io CLI**: You'll need the Fly.io command-line tool (flyctl) for deployments. Install it using:
+   
    For macOS and Linux:
    ```bash
    curl -L https://fly.io/install.sh | sh
    ```
+   
    For Windows (using PowerShell):
    ```powershell
    iwr https://fly.io/install.ps1 -useb | iex
    ```
 
-2. Authenticate with Fly.io:
+4. **Git**: Ensure you have Git installed on your system. Download it from [git-scm.com](https://git-scm.com/downloads).
+
+### Installation Steps
+
+1. **Clone the Repository**:
+   Open your terminal and run:
+   ```bash
+   git clone https://github.com/ruvnet/agentic-preview.git
+   cd agentic-preview
+   ```
+
+2. **Install Dependencies**:
+   Use Poetry to install the project dependencies:
+   ```bash
+   poetry install
+   ```
+
+3. **Authenticate with Fly.io**:
+   Set up your Fly.io account:
    ```bash
    flyctl auth login
    ```
 
-3. Run the `install.sh` script to set up the project environment:
+4. **Set Up Environment Variables**:
+   Create a `.env` file in the root directory with the following content:
+   ```
+   DATABASE_URL=sqlite:///./agentic_platform.db
+   OPENAI_API_KEY=your_openai_api_key
+   FLY_API_TOKEN=your_fly_api_token
+   ```
+   Replace `your_openai_api_key` and `your_fly_api_token` with your actual API keys.
+
+5. **Initialize the Database**:
+   Run the database initialization script:
    ```bash
-   bash install.sh
+   poetry run python agentic_platform/init_db.py
    ```
 
-### Handling Deprecation Warnings
+6. **Verify Installation**:
+   Ensure everything is set up correctly by running:
+   ```bash
+   poetry run python -c "from agentic_platform import __version__; print(f'Agentic Preview version: {__version__}')"
+   ```
 
-If you encounter deprecation warnings related to SQLAlchemy or Pydantic, you may need to update your code to use the latest recommended patterns. Here are some general guidelines:
+Congratulations! You've successfully installed Agentic Preview and are ready to start using its powerful features.
 
-1. For SQLAlchemy warnings:
-   - Update imports from `sqlalchemy.ext.declarative` to `sqlalchemy.orm`
-   - Use `from sqlalchemy.orm import declarative_base` instead of `from sqlalchemy.ext.declarative import declarative_base`
+## Usage Guide
 
-2. For Pydantic warnings:
-   - Update imports to use `field_validator` instead of `validator`
-   - Use the `@field_validator` decorator instead of `@validator`
-   - Add the `@classmethod` decorator when using `@field_validator`
-
-Always refer to the official documentation of SQLAlchemy and Pydantic for the most up-to-date information on handling deprecation warnings.
-
-## Deployment
+Now that you have Agentic Preview installed, let's explore how to use its various features and capabilities.
 
 ### Starting the Application
 
-Activate the virtual environment:
+1. **Activate the Virtual Environment**:
+   ```bash
+   poetry shell
+   ```
 
-```bash
-source venv/bin/activate
-```
-
-Run the application:
-
-```bash
-poetry run python main.py
-```
-
-### Deploying an Application
-
-Send a POST request to `http://localhost:5000/deploy` with the appropriate JSON payload.
-
-Example using `curl`:
-
-```bash
-curl -X POST "http://localhost:5000/deploy" \
-  -H "Content-Type: application/json" \
-  -d '{"repo": "username/repository", "branch": "main"}'
-```
-
-## Advanced Configurations
-
-### Modifying Runtime Limit
-
-To change the runtime limit for deployed instances, modify the `RUN_TIME_LIMIT` variable in `main.py`.
-
-### Custom Deployment Arguments
-
-You can pass custom deployment arguments in the `args` field of the deployment request JSON body. These arguments will be passed to the `flyctl deploy` command.
-
-### Customizing `fly.toml`
-
-If your repository does not contain a `fly.toml` file, Agentic Preview will generate one for you. You can customize the generated `fly.toml` by modifying the `deploy_app` function in `main.py`.
-
-## Agentic Editor
-
-The Agentic Editor is a powerful tool that provides various capabilities, API endpoints, and functions to enhance your development workflow. Below is an overview of its features, usage, and API endpoints.
-
-### Features
-
-- **RESTful API**: Provides a simple interface for executing Aider commands.
-- **Virtual Environment Management**: Ensures isolated execution of the Aider tool.
-- **Configurable Execution**: Supports various configuration options for customizing Aider's behavior.
-
-### Usage
-
-To start the FastAPI server, run the following command:
-
-```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
+2. **Run the Application**:
+   ```bash
+   uvicorn agentic_platform.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+   The application will start, and you can access it at `http://localhost:8000`.
 
 ### API Endpoints
 
-#### **POST** `/run-aider`
+Agentic Preview offers a rich set of API endpoints to interact with its various features. Here's an overview of the main endpoints:
 
-Execute the Aider tool with the provided configuration.
+#### Agentic Editor Endpoints
 
-##### Request Body
+1. **Run Aider for AI-Assisted Coding**:
+   - **POST** `/run-aider`
+   - Example usage:
+     ```bash
+     curl -X POST "http://localhost:8000/run-aider" \
+       -H "Content-Type: application/json" \
+       -d '{
+         "chat_mode": "code",
+         "edit_format": "diff",
+         "model": "gpt-4",
+         "prompt": "Optimize the database query in main.py",
+         "files": ["main.py", "database.py"]
+       }'
+     ```
 
-- `chat_mode`: Mode for Aider chat (default: "code").
-- `edit_format`: Format for edits (default: "diff").
-- `model`: Model to use (default: "gpt-4").
-- `prompt`: Optional prompt message.
-- `files`: List of files to include.
+2. **List All Projects**:
+   - **GET** `/projects`
+   - Example usage:
+     ```bash
+     curl "http://localhost:8000/projects"
+     ```
 
-##### Example Request
+3. **List All Users**:
+   - **GET** `/users`
+   - Example usage:
+     ```bash
+     curl "http://localhost:8000/users"
+     ```
 
-```json
-{
-  "chat_mode": "code",
-  "edit_format": "diff",
-  "model": "gpt-4",
-  "prompt": "Initial setup",
-  "files": ["main.py", "utils.py"]
-}
-```
+#### Agentic Preview Endpoints
 
-##### Example Response
+1. **Deploy an Application**:
+   - **POST** `/deploy`
+   - Example usage:
+     ```bash
+     curl -X POST "http://localhost:8000/deploy" \
+       -H "Content-Type: application/json" \
+       -d '{
+         "repo": "username/repository",
+         "branch": "main",
+         "args": ["--build-arg", "ENV=production"]
+       }'
+     ```
 
-The response will stream the output from the Aider tool, providing real-time feedback on the execution process.
+2. **Check Deployment Status**:
+   - **GET** `/status/{app_name}`
+   - Example usage:
+     ```bash
+     curl "http://localhost:8000/status/my-awesome-app"
+     ```
 
-#### **GET** `/projects`
+3. **Stream Application Logs**:
+   - **GET** `/logs/{app_name}`
+   - Example usage:
+     ```bash
+     curl "http://localhost:8000/logs/my-awesome-app"
+     ```
 
-List all projects.
+### Working with Projects
 
-#### **GET** `/users`
+1. **Create a New Project**:
+   ```bash
+   curl -X POST "http://localhost:8000/projects" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "My Awesome Project",
+       "description": "A revolutionary web application",
+       "repository_url": "https://github.com/username/awesome-project"
+     }'
+   ```
 
-List all users.
+2. **Update Project Details**:
+   ```bash
+   curl -X PUT "http://localhost:8000/projects/1" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "description": "An even more revolutionary web application"
+     }'
+   ```
 
-### Detailed Documentation
+3. **Delete a Project**:
+   ```bash
+   curl -X DELETE "http://localhost:8000/projects/1"
+   ```
 
-For more detailed information on the architecture, configuration, installation, introduction, and usage of the Agentic Editor, please refer to the [Agentic Editor Documentation](./agentic_editor/docs/README.md).
+### AI-Assisted Coding with Aider
+
+1. **Generate Code Based on a Prompt**:
+   ```bash
+   curl -X POST "http://localhost:8000/run-aider" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "chat_mode": "code",
+       "edit_format": "diff",
+       "model": "gpt-4",
+       "prompt": "Create a Python function to calculate Fibonacci numbers",
+       "files": ["math_utils.py"]
+     }'
+   ```
+
+2. **Refactor Existing Code**:
+   ```bash
+   curl -X POST "http://localhost:8000/run-aider" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "chat_mode": "code",
+       "edit_format": "diff",
+       "model": "gpt-4",
+       "prompt": "Refactor the main() function to improve readability",
+       "files": ["main.py"]
+     }'
+   ```
+
+## Configuration
+
+Agentic Preview offers various configuration options to tailor the platform to your specific needs:
+
+1. **Application-wide Settings**:
+   Modify `agentic_platform/config.py` to adjust global settings such as database URLs, API keys, and default values.
+
+2. **Deployment Settings**:
+   Fine-tune deployment configurations in `agentic_platform/api/deploy.py`. This includes settings for Fly.io deployments and resource allocation.
+
+3. **Aider Behavior**:
+   Customize the AI-assisted coding features by modifying `agentic_platform/api/aider.py`. Adjust model parameters, prompts, and output formats.
+
+4. **Database Models**:
+   If you need to extend or modify the data structure, update the models in `agentic_platform/models.py`.
+
+5. **API Endpoints**:
+   Add or modify API endpoints in `agentic_platform/main.py` to extend the platform's functionality.
+
+## Contributing
+
+We welcome contributions from the community! If you'd like to contribute to Agentic Preview, please follow these steps:
+
+1. Fork the repository on GitHub.
+2. Create a new branch for your feature or bug fix.
+3. Write your code and add tests if applicable.
+4. Ensure all tests pass by running `pytest`.
+5. Submit a pull request with a clear description of your changes.
+
+For more detailed information on contributing, please read our [CONTRIBUTING.md](CONTRIBUTING.md) file.
 
 ## License
 
-MIT License
+Agentic Preview is open-source software licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+
+## Support and Community
+
+If you encounter any issues or have questions about Agentic Preview, please don't hesitate to:
+
+- Open an issue on our [GitHub repository](https://github.com/ruvnet/agentic-preview/issues).
+- Join our community forum at [community.agentic-preview.com](https://community.agentic-preview.com).
+- Follow us on Twitter [@AgenticPreview](https://twitter.com/AgenticPreview) for the latest updates and announcements.
+
+We're excited to see what you'll build with Agentic Preview! Happy coding!
