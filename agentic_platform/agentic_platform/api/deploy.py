@@ -423,15 +423,21 @@ async def clone_repo(request: CloneRequest = Body(
         project_name = request.repo_url.split('/')[-1]
         update_project_user_data(project_name, request.user_id, request.repo_url, db)
 
+        # Add the cloned repository to the cloned_repos dictionary
+        cloned_repos[repo_id] = project_dir
+
         logger.info(f"Repository cloned successfully with ID: {repo_id}")
         return {"repo_id": repo_id, "message": "Repository cloned successfully and project created"}
     except Exception as e:
         logger.error(f"Error cloning repository: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/repos")
-async def list_repo_ids():
-    return {"repo_ids": list(cloned_repos.keys())}
+@router.get("/repos", 
+            response_model=List[Dict[str, str]],
+            summary="List cloned repositories",
+            description="List all cloned repositories with their IDs and paths")
+async def list_repos():
+    return [{"repo_id": repo_id, "path": path} for repo_id, path in cloned_repos.items()]
 
 
 @router.post("/explore", 
