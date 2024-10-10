@@ -1,7 +1,13 @@
+import sys
+import os
+
+# Add the parent directory to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from agentic_platform.models import Base, Project
-from agentic_platform.database import SQLALCHEMY_DATABASE_URL
+from agentic_platform.agentic_platform.models import Base, Project
+from agentic_platform.agentic_platform.database import SQLALCHEMY_DATABASE_URL
 
 # Create a new engine instance
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
