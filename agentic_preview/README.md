@@ -17,16 +17,7 @@ Agentic Preview is an asynchronous FastAPI backend service that allows users to 
 
 ## Installation
 
-Run the `install.sh` script to set up the project environment:
-
-```bash
-bash install.sh
-```
-# Agentic Preview
-
-## Installation
-
-This project uses Poetry for dependency management. Follow these steps to set up and run the project:
+This project uses Poetry for dependency management. Follow these steps to set up the project:
 
 1. Ensure you have Python 3.8 or higher installed on your system.
 
@@ -45,6 +36,12 @@ This project uses Poetry for dependency management. Follow these steps to set up
    ```
    poetry install
    ```
+
+Alternatively, you can run the `install.sh` script to set up the project environment:
+
+```bash
+bash install.sh
+```
 
 ## Running the Application
 
@@ -94,5 +91,6 @@ If you encounter any issues during installation or running the application, plea
 1. Ensure you're using the correct Python version (3.8+).
 2. Make sure Poetry is correctly installed and in your system PATH.
 3. If you're having dependency issues, try deleting the `poetry.lock` file and running `poetry install` again.
+4. Ensure that Git and Fly.io CLI (`flyctl`) are properly installed and configured on your system.
 
 For more information on using Poetry, refer to the [official Poetry documentation](https://python-poetry.org/docs/).
