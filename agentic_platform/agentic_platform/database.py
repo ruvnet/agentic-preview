@@ -13,6 +13,7 @@ Base = declarative_base()
 
 def init_db():
     from . import models
+    Base.metadata.drop_all(bind=engine)  # This line drops all tables
     Base.metadata.create_all(bind=engine)
     
     # Add new columns if they don't exist
