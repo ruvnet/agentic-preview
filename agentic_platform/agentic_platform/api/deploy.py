@@ -602,28 +602,25 @@ async def cleanup():
             del deployments[app_name]
         except Exception as e:
             logger.error(f"Error destroying app during cleanup: {e}")
-@router.get("/projects", 
-            response_model=Dict[str, Any],
-            summary="List all projects",
-            description="Display all cloned GitHub repositories as projects")
-async def list_projects():
+
+@router.get("/projects", response_model=Dict[str, Any], summary="List all projects")
+async def list_projects(db: Session = Depends(get_db)):
     try:
-        db = next(get_db())
         projects = db.query(Project).all()
         project_list = [
             {
-                "id": project.id,
+                "id": project.id,  # Assuming `id` is used as `repo_id`
                 "name": project.name,
                 "user_id": project.user_id,
                 "repo_url": project.repo_url,
                 "created_at": project.created_at,
                 "updated_at": project.updated_at,
-                "repo_id": project.id,  # Assuming project.id is unique and can be used as repo_id
-                "path": f"projects/{project.id}"
+                "repo_id": project.id,  # Adding `repo_id` explicitly
+                "path": f"projects/{project.id}"  # Dynamically constructing `path`
             }
             for project in projects
         ]
-        
+
         return {
             "projects": project_list,
             "repositories": [
@@ -637,6 +634,7 @@ async def list_projects():
     except Exception as e:
         logger.error(f"Error listing projects: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.put("/projects/{project_id}", 
             response_model=Dict[str, str],
