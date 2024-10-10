@@ -48,21 +48,29 @@ To stream logs for a deployed application, send a GET request to the `/logs/{app
 
 ## Installation
 
-Run the `install.sh` script to set up the project environment:
-
-```bash
-bash install.sh
-```
-
-## Deployment
-
 ### Prerequisites
 
-- Ensure you have authenticated with Fly.io:
+1. Install Fly.io CLI (flyctl):
+   For macOS and Linux:
+   ```bash
+   curl -L https://fly.io/install.sh | sh
+   ```
+   For Windows (using PowerShell):
+   ```powershell
+   iwr https://fly.io/install.ps1 -useb | iex
+   ```
 
-```bash
-flyctl auth login
-```
+2. Authenticate with Fly.io:
+   ```bash
+   flyctl auth login
+   ```
+
+3. Run the `install.sh` script to set up the project environment:
+   ```bash
+   bash install.sh
+   ```
+
+## Deployment
 
 ### Starting the Application
 
