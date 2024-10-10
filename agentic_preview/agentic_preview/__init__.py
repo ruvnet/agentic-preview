@@ -12,6 +12,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-from .routes import deploy, status, logs
+from .routes import deploy, status, logs, apps
+
+app.include_router(apps.router)
 
 # This file marks the directory as a Python package and initializes the FastAPI app.
