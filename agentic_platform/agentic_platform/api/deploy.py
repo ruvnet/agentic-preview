@@ -617,11 +617,6 @@ async def list_projects(db: Session = Depends(get_db)):
 
 @router.on_event("shutdown")
 async def cleanup():
-    # Clean up cloned repositories
-    for repo_id, repo_path in cloned_repos.items():
-        shutil.rmtree(repo_path, ignore_errors=True)
-        logger.info(f"Cleaned up repository: {repo_id}")
-
     # Clean up deployments (optional)
     for app_name in list(deployments.keys()):
         try:
@@ -630,6 +625,13 @@ async def cleanup():
             del deployments[app_name]
         except Exception as e:
             logger.error(f"Error destroying app during cleanup: {e}")
+
+    # Log the repositories that would have been cleaned up
+    for repo_id, repo_path in cloned_repos.items():
+        logger.info(f"Repository preserved: {repo_id} at {repo_path}")
+
+    # Clear the cloned_repos dictionary without deleting the files
+    cloned_repos.clear()
 
 @router.get("/projects", response_model=Dict[str, Any], summary="List all projects")
 async def list_projects(db: Session = Depends(get_db)):
