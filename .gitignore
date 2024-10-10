@@ -162,3 +162,4 @@ cython_debug/
 #.idea/
 .aider*
 node_modules
+aider_projects.db
