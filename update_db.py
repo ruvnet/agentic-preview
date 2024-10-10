@@ -20,21 +20,23 @@ def update_database():
     db = SessionLocal()
 
     try:
+        from sqlalchemy import text
+
         # Rename the existing table
-        db.execute("ALTER TABLE projects RENAME TO old_projects")
+        db.execute(text("ALTER TABLE projects RENAME TO old_projects"))
 
         # Create the new table with the updated schema
         Base.metadata.create_all(bind=engine)
 
         # Copy data from the old table to the new one
-        db.execute("""
+        db.execute(text("""
             INSERT INTO projects (id, name, user_id, created_at, last_updated, total_cost)
             SELECT id, name, user_id, created_at, last_updated, total_cost
             FROM old_projects
-        """)
+        """))
 
         # Drop the old table
-        db.execute("DROP TABLE old_projects")
+        db.execute(text("DROP TABLE old_projects"))
 
         # Commit the transaction
         db.commit()
