@@ -708,13 +708,13 @@ async def stream_aider_output(process):
 @router.post("/docker", response_model=Dict[str, Any], summary="Create Dockerfile",
              description="Generate a Dockerfile for a specified project using Aider.")
 async def create_dockerfile(
-    repo_id: str = Body(..., embed=True, description="Unique identifier of the project"),
+    project_id: str = Body(..., embed=True, description="Unique identifier of the project"),
     db: Session = Depends(get_db)
 ):
     debug_info = {}
     try:
-        # Retrieve the project from the database using repo_id
-        project = db.query(Project).filter(Project.repo_id == repo_id).first()
+        # Retrieve the project from the database using id
+        project = db.query(Project).filter(Project.id == project_id).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -726,7 +726,7 @@ async def create_dockerfile(
         debug_info["current_dir"] = current_dir
         
         # Construct the project path using pathlib
-        project_dir = get_project_directory(repo_id)
+        project_dir = get_project_directory(str(project.id))
         debug_info["project_dir"] = str(project_dir)
         
         # Check if the project directory exists
