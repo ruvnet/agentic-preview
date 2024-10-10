@@ -14,6 +14,7 @@ import uuid
 from sqlalchemy.orm import Session
 from ..crud import get_db, update_project_user_data
 from ..models import Project
+from typing import Optional
 from sqlalchemy.orm import Session
 from ..crud import get_db
 from ..models import Project
@@ -65,6 +66,10 @@ class DeployRequest(BaseModel):
 class CloneRequest(BaseModel):
     repo_url: str
     user_id: str
+
+class UpdateProjectRequest(BaseModel):
+    name: Optional[str] = None
+    repo_url: Optional[str] = None
 
 class ExploreRequest(BaseModel):
     repo_id: str
@@ -612,3 +617,49 @@ async def list_projects():
     except Exception as e:
         logger.error(f"Error listing projects: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/projects/{project_id}", 
+            response_model=Dict[str, str],
+            summary="Update a project",
+            description="Update the details of an existing project")
+async def update_project(
+    project_id: str,
+    request: UpdateProjectRequest,
+    db: Session = Depends(get_db)
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    if request.name:
+        project.name = request.name
+    if request.repo_url:
+        project.repo_url = request.repo_url
+    
+    project.last_updated = datetime.utcnow()
+    db.commit()
+    
+    return {"message": "Project updated successfully"}
+
+@router.delete("/projects/{project_id}", 
+               response_model=Dict[str, str],
+               summary="Delete a project",
+               description="Delete an existing project")
+async def delete_project(
+    project_id: str,
+    db: Session = Depends(get_db)
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Delete the project directory
+    project_dir = os.path.join("projects", project_id)
+    if os.path.exists(project_dir):
+        shutil.rmtree(project_dir)
+    
+    # Delete the project from the database
+    db.delete(project)
+    db.commit()
+    
+    return {"message": "Project deleted successfully"}
