@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from agentic_platform.models import Base, Project
-from agentic_platform.database import SQLALCHEMY_DATABASE_URL
+from agentic_preview.models import Base, Project
+from agentic_preview.database import SQLALCHEMY_DATABASE_URL
 
 # Create a new engine instance
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
