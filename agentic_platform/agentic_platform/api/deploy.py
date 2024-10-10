@@ -6,7 +6,7 @@ import shutil
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Union
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Body, Path, Query, Depends
+from fastapi import APIRouter, HTTPException, Body, Path as PathParam, Query, Depends
 from pydantic import BaseModel
 from fastapi.responses import RedirectResponse, StreamingResponse, JSONResponse
 import logging
@@ -14,13 +14,6 @@ import uuid
 from sqlalchemy.orm import Session
 from ..crud import get_db, update_project_user_data
 from ..models import Project
-from typing import List, Dict, Any
-from typing import Optional
-from sqlalchemy.orm import Session
-from ..crud import get_db
-from ..models import Project
-import os
-import asyncio
 import traceback
 
 # Define the base directory for projects using pathlib for robust path handling
