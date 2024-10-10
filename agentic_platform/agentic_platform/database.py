@@ -19,7 +19,7 @@ def init_db():
     with engine.connect() as conn:
         inspector = inspect(engine)
         if 'projects' not in inspector.get_table_names():
-            Base.metadata.tables['projects'].create(bind=engine)
+            models.Project.__table__.create(bind=engine)
         else:
             existing_columns = [col['name'] for col in inspector.get_columns('projects')]
             
@@ -37,4 +37,4 @@ def init_db():
         
         # Check if users table exists, if not create it
         if 'users' not in inspector.get_table_names():
-            Base.metadata.tables['users'].create(bind=engine)
+            models.User.__table__.create(bind=engine)
