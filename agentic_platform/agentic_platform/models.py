@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Float, Integer
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
@@ -15,9 +15,9 @@ class User(Base):
 class Project(Base):
     __tablename__ = "projects"
 
-    id = Column(String, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
-    user_id = Column(String, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))  # This creates the foreign key relationship
     repo_url = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

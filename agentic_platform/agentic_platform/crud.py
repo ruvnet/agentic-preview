@@ -17,10 +17,11 @@ def update_project_user_data(project_name: str, user_id: str, repo_url: str, db:
     if not user:
         user = models.User(user_id=user_id)
         db.add(user)
+        db.flush()  # This will assign an id to the user
     
-    project = db.query(models.Project).filter(models.Project.name == project_name, models.Project.user_id == user_id).first()
+    project = db.query(models.Project).filter(models.Project.name == project_name, models.Project.user_id == user.id).first()
     if not project:
-        project = models.Project(name=project_name, user_id=user_id, repo_url=repo_url)
+        project = models.Project(name=project_name, user_id=user.id, repo_url=repo_url)
         db.add(project)
     else:
         project.updated_at = datetime.utcnow()
