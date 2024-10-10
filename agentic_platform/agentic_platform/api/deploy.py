@@ -727,23 +727,11 @@ async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = 
         current_dir = os.path.abspath(os.getcwd())
         debug_info["current_dir"] = current_dir
         
-        # Construct the project path using absolute paths
-        projects_dir = os.path.join(current_dir, "agentic_platform", "projects")
+        # Construct the project path
+        projects_dir = os.path.abspath(os.path.join(current_dir, "..", "projects"))
         project_dir = os.path.join(projects_dir, str(project.id))
         debug_info["projects_dir"] = projects_dir
         debug_info["project_dir"] = project_dir
-        
-        # Check if the projects directory exists
-        if not os.path.exists(projects_dir):
-            debug_info["error"] = f"Projects directory does not exist: {projects_dir}"
-            logger.error(debug_info["error"])
-            # List contents of the parent directory
-            parent_dir = os.path.dirname(projects_dir)
-            debug_info["parent_dir_contents"] = os.listdir(parent_dir)
-            raise HTTPException(status_code=404, detail="Projects directory not found")
-        
-        # List contents of the projects directory
-        debug_info["projects_dir_contents"] = os.listdir(projects_dir)
         
         # Check if the project directory exists
         if not os.path.exists(project_dir):
@@ -759,25 +747,14 @@ async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = 
         if os.path.exists(dockerfile_path):
             return {"message": "Dockerfile already exists", "debug_info": debug_info}
         
-        # Initialize git repository if not already initialized
-        try:
-            await execute_command(['git', 'status'], cwd=project_dir)
-            debug_info["git_status"] = "Git repository already initialized"
-        except Exception as e:
-            debug_info["git_init_error"] = str(e)
-            await execute_command(['git', 'init'], cwd=project_dir)
-            debug_info["git_status"] = "Git repository initialized"
-        
-        await execute_command(['git', 'add', '.'], cwd=project_dir)
-        debug_info["git_add"] = "Files added to git"
-        
         # Prepare the Aider command
         aider_command = [
             "aider",
             "--yes-always",
             "--no-git",
             f"--work-dir={project_dir}",
-            "--model=gpt-4",
+            "--model=gpt-4-0314",
+            "--use-github",
             "--message=Review the files and folder structure in this project. Identify the main application, its dependencies, and any specific requirements. Then, create a Dockerfile that can build and run this application. The Dockerfile should be optimized for production use and follow best practices. Include comments in the Dockerfile to explain each step."
         ]
         debug_info["aider_command"] = " ".join(aider_command)
