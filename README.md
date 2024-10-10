@@ -70,6 +70,21 @@ To stream logs for a deployed application, send a GET request to the `/logs/{app
    bash install.sh
    ```
 
+### Handling Deprecation Warnings
+
+If you encounter deprecation warnings related to SQLAlchemy or Pydantic, you may need to update your code to use the latest recommended patterns. Here are some general guidelines:
+
+1. For SQLAlchemy warnings:
+   - Update imports from `sqlalchemy.ext.declarative` to `sqlalchemy.orm`
+   - Use `from sqlalchemy.orm import declarative_base` instead of `from sqlalchemy.ext.declarative import declarative_base`
+
+2. For Pydantic warnings:
+   - Update imports to use `field_validator` instead of `validator`
+   - Use the `@field_validator` decorator instead of `@validator`
+   - Add the `@classmethod` decorator when using `@field_validator`
+
+Always refer to the official documentation of SQLAlchemy and Pydantic for the most up-to-date information on handling deprecation warnings.
+
 ## Deployment
 
 ### Starting the Application

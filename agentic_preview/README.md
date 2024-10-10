@@ -92,5 +92,8 @@ If you encounter any issues during installation or running the application, plea
 2. Make sure Poetry is correctly installed and in your system PATH.
 3. If you're having dependency issues, try deleting the `poetry.lock` file and running `poetry install` again.
 4. Ensure that Git and Fly.io CLI (`flyctl`) are properly installed and configured on your system.
+5. If you encounter deprecation warnings related to SQLAlchemy or Pydantic, you may need to update your code. Refer to the main README.md file for guidelines on handling these warnings.
 
 For more information on using Poetry, refer to the [official Poetry documentation](https://python-poetry.org/docs/).
+
+For the most up-to-date information on handling deprecation warnings, always refer to the official documentation of SQLAlchemy and Pydantic.
