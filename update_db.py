@@ -30,11 +30,21 @@ def update_database():
             if 'repo_url' not in columns:
                 # Add 'repo_url' column to existing table
                 db.execute(text("ALTER TABLE projects ADD COLUMN repo_url STRING"))
+                print("Added repo_url column to projects table")
             else:
                 print("repo_url column already exists")
+            
+            # Check and update other columns
+            if 'id' not in columns or inspector.get_columns('projects')[0]['type'] != String:
+                db.execute(text("ALTER TABLE projects RENAME TO projects_old"))
+                Base.metadata.create_all(bind=engine)
+                db.execute(text("INSERT INTO projects (id, name, user_id, repo_url, created_at, updated_at, total_cost) SELECT CAST(id AS TEXT), name, user_id, repo_url, created_at, last_updated, total_cost FROM projects_old"))
+                db.execute(text("DROP TABLE projects_old"))
+                print("Updated projects table schema")
         else:
             # If the table doesn't exist, create it with all columns
             Base.metadata.create_all(bind=engine)
+            print("Created projects table")
 
         # Commit the transaction
         db.commit()
