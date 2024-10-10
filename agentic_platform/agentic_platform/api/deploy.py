@@ -723,10 +723,27 @@ async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = 
         debug_info["project_id"] = str(project.id)
         debug_info["project_name"] = project.name
         
-        # Construct the project path
-        projects_dir = "projects"  # Base directory for all projects
+        # Get the absolute path of the current working directory
+        current_dir = os.path.abspath(os.getcwd())
+        debug_info["current_dir"] = current_dir
+        
+        # Construct the project path using absolute paths
+        projects_dir = os.path.join(current_dir, "agentic_platform", "projects")
         project_dir = os.path.join(projects_dir, str(project.id))
+        debug_info["projects_dir"] = projects_dir
         debug_info["project_dir"] = project_dir
+        
+        # Check if the projects directory exists
+        if not os.path.exists(projects_dir):
+            debug_info["error"] = f"Projects directory does not exist: {projects_dir}"
+            logger.error(debug_info["error"])
+            # List contents of the parent directory
+            parent_dir = os.path.dirname(projects_dir)
+            debug_info["parent_dir_contents"] = os.listdir(parent_dir)
+            raise HTTPException(status_code=404, detail="Projects directory not found")
+        
+        # List contents of the projects directory
+        debug_info["projects_dir_contents"] = os.listdir(projects_dir)
         
         # Check if the project directory exists
         if not os.path.exists(project_dir):
