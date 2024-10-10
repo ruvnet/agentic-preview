@@ -5,7 +5,7 @@ import json
 import shutil
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Union
-
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, Body, Path, Query, Depends
 from pydantic import BaseModel
 from fastapi.responses import RedirectResponse, StreamingResponse, JSONResponse
@@ -23,10 +23,12 @@ import os
 import asyncio
 import traceback
 
-PROJECTS_BASE_DIR = os.environ.get('PROJECTS_BASE_DIR', '/agentic-preview/projects')
+# Define the base directory for projects using pathlib for robust path handling
+BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECTS_BASE_DIR = BASE_DIR / 'projects'
 
-def get_project_directory(project_id: str) -> str:
-    return os.path.join("projects", project_id)
+def get_project_directory(project_id: str) -> Path:
+    return PROJECTS_BASE_DIR / project_id
 
 router = APIRouter()
 
@@ -713,12 +715,17 @@ async def delete_project(
 async def stream_aider_output(process):
     async for line in process.stdout:
         logger.info(line.decode().strip())
-@router.post("/docker", response_model=Dict[str, Any])
-async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = Depends(get_db)):
+
+@router.post("/docker", response_model=Dict[str, Any], summary="Create Dockerfile",
+             description="Generate a Dockerfile for a specified project using Aider.")
+async def create_dockerfile(
+    repo_id: str = Body(..., embed=True, description="Unique identifier of the project"),
+    db: Session = Depends(get_db)
+):
     debug_info = {}
     try:
-        # Get the project from the database
-        project = db.query(Project).filter(Project.id == repo_id).first()
+        # Retrieve the project from the database using repo_id
+        project = db.query(Project).filter(Project.repo_id == repo_id).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -729,12 +736,12 @@ async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = 
         current_dir = os.path.abspath(os.getcwd())
         debug_info["current_dir"] = current_dir
         
-        # Construct the project path
-        project_dir = os.path.join(PROJECTS_BASE_DIR, str(project.id))
-        debug_info["project_dir"] = project_dir
+        # Construct the project path using pathlib
+        project_dir = get_project_directory(repo_id)
+        debug_info["project_dir"] = str(project_dir)
         
         # Check if the project directory exists
-        if not os.path.exists(project_dir):
+        if not project_dir.exists():
             error_message = f"Project directory not found: {project_dir}"
             debug_info["error"] = error_message
             logger.error(error_message)
@@ -744,8 +751,8 @@ async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = 
         debug_info["project_contents"] = os.listdir(project_dir)
         
         # Check if Dockerfile already exists
-        dockerfile_path = os.path.join(project_dir, "Dockerfile")
-        if os.path.exists(dockerfile_path):
+        dockerfile_path = project_dir / "Dockerfile"
+        if dockerfile_path.exists():
             return {"message": "Dockerfile already exists", "debug_info": debug_info}
         
         # Prepare the Aider command
@@ -759,7 +766,7 @@ async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = 
         ]
         debug_info["aider_command"] = " ".join(aider_command)
         
-        # Run Aider and stream output
+        # Run Aider and capture output
         process = await asyncio.create_subprocess_exec(
             *aider_command,
             stdout=asyncio.subprocess.PIPE,
@@ -770,13 +777,28 @@ async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = 
         debug_info["aider_stderr"] = stderr.decode()
         
         # Check if Dockerfile was created
-        if os.path.exists(dockerfile_path):
-            with open(dockerfile_path, 'r') as f:
-                dockerfile_content = f.read()
-            return {"message": "Dockerfile created successfully", "content": dockerfile_content, "debug_info": debug_info}
+        if dockerfile_path.exists():
+            dockerfile_content = dockerfile_path.read_text()
+            return {
+                "message": "Dockerfile created successfully",
+                "content": dockerfile_content,
+                "debug_info": debug_info
+            }
         else:
             debug_info["error"] = "Dockerfile creation failed"
-            return {"message": "Dockerfile creation failed", "debug_info": debug_info}
+            return {
+                "message": "Dockerfile creation failed",
+                "debug_info": debug_info
+            }
+    
+    except HTTPException as http_exc:
+        logger.error(f"HTTP exception occurred: {http_exc.detail}")
+        debug_info["error"] = http_exc.detail
+        debug_info["traceback"] = traceback.format_exc()
+        return JSONResponse(
+            status_code=http_exc.status_code,
+            content={"detail": http_exc.detail, "debug_info": debug_info}
+        )
     
     except Exception as e:
         logger.error(f"Error creating Dockerfile: {e}")
