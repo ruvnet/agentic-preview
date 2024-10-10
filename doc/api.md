@@ -382,6 +382,10 @@ Currently, there is no rate limiting implemented on the API. However, it's recom
 
 The current version of the API is v1. All endpoints should be prefixed with `/api/v1/` in a production environment to allow for future versioning.
 
+## Best Practices and Guidelines
+
+For detailed best practices and guidelines on using the Agentic Platform API, please refer to our [API Best Practices and Guidelines](./api_best_practices.md) document.
+
 ## Conclusion
 
-This API documentation provides a comprehensive overview of the endpoints available in the Agentic Platform. For any additional information or support, please refer to the main README.md file or contact the development team.
+This API documentation provides a comprehensive overview of the endpoints available in the Agentic Platform. For any additional information, best practices, or support, please refer to the main README.md file, the API Best Practices and Guidelines document, or contact the development team.
