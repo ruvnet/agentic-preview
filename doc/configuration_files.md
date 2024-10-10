@@ -1,5 +1,7 @@
 # Configuration Files
 
+Last updated: [Current Date]
+
 This repository contains several configuration and setup files that are crucial for project management, dependency handling, and deployment. Here's an overview of the key configuration files:
 
 1. **pyproject.toml**
@@ -25,5 +27,23 @@ This repository contains several configuration and setup files that are crucial 
    - Purpose: Specifies files and directories that Git should ignore
 
 These configuration files play a crucial role in maintaining the project's structure, managing dependencies, and facilitating deployment processes. Always refer to these files when setting up the project environment or making changes to the project structure.
+
+## Agentic Platform Configuration
+
+The Agentic Platform introduces additional configuration files:
+
+1. **database.py**
+   - Location: `agentic_platform/agentic_platform/`
+   - Purpose: Defines database initialization functions
+
+2. **models.py**
+   - Location: `agentic_platform/agentic_platform/`
+   - Purpose: Defines database models for User and Project
+
+3. **crud.py**
+   - Location: `agentic_platform/agentic_platform/`
+   - Purpose: Contains CRUD operations for database interactions
+
+These configuration files are crucial for setting up and interacting with the database in the Agentic Platform.
 
 For more detailed information on each file's contents and usage, please refer to the files directly in the repository root.
