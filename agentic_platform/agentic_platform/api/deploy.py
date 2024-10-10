@@ -14,6 +14,7 @@ import uuid
 from sqlalchemy.orm import Session
 from ..crud import get_db, update_project_user_data
 from ..models import Project
+from typing import List, Dict
 from typing import Optional
 from sqlalchemy.orm import Session
 from ..crud import get_db
@@ -436,8 +437,19 @@ async def clone_repo(request: CloneRequest = Body(
             response_model=List[Dict[str, str]],
             summary="List cloned repositories",
             description="List all cloned repositories with their IDs and paths")
-async def list_repos():
-    return [{"repo_id": repo_id, "path": path} for repo_id, path in cloned_repos.items()]
+async def list_repos(db: Session = Depends(get_db)):
+    try:
+        projects = db.query(Project).all()
+        return [
+            {
+                "repo_id": str(project.id),
+                "path": f"projects/{project.id}"
+            }
+            for project in projects
+        ]
+    except Exception as e:
+        logger.error(f"Error listing repositories: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/explore", 
