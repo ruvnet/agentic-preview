@@ -716,7 +716,7 @@ async def create_dockerfile(
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
-        debug_info["project_id"] = str(project.id)
+        debug_info["project_id"] = project.id
         debug_info["project_name"] = project.name
         
         # Get the absolute path of the current working directory
@@ -724,7 +724,7 @@ async def create_dockerfile(
         debug_info["current_dir"] = current_dir
         
         # Construct the project path using pathlib
-        project_dir = get_project_directory(str(project.id))
+        project_dir = get_project_directory(project.id)
         debug_info["project_dir"] = str(project_dir)
         
         # Check if the project directory exists
