@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Mr+Dafoe&family=Raleway:wght@300&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -73,4 +75,84 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.brand-text {
+  font-family: 'Mr Dafoe', cursive;
+  font-size: 1.5em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: flex-end;
+}
+
+.brand-text .js {
+  font-family: 'Raleway', sans-serif;
+  font-weight: 300;
+  font-size: 0.5em;
+  margin-left: 0.1em;
+}
+
+/* Updated styles for code blocks */
+pre {
+  @apply bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-4 rounded-md overflow-x-auto;
+}
+
+code {
+  @apply font-mono text-sm;
+}
+
+/* Syntax highlighting for code blocks */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  @apply text-gray-500 dark:text-gray-400;
+}
+
+.token.punctuation {
+  @apply text-gray-700 dark:text-gray-300;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  @apply text-green-600 dark:text-green-400;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  @apply text-purple-600 dark:text-purple-400;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  @apply text-yellow-500 dark:text-yellow-300;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+.token.function,
+.token.class-name {
+  @apply text-red-600 dark:text-red-400;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  @apply text-orange-600 dark:text-orange-400;
 }

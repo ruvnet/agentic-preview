@@ -1,45 +1,3 @@
-const postMessage = (message) => {
-  window.top.postMessage(message, "https://gptengineer.app");
-  window.top.postMessage(message, "http://localhost:3000");
-};
-
-const patchFetch = (reportHTTPError) => {
-  // Save the original fetch function
-  const originalFetch = window.fetch;
-
-  window.fetch = async function (...args) {
-    try {
-      // Call the original fetch function
-      const response = await originalFetch(...args);
-
-      // Optionally, check for errors or log them
-      if (!response.ok) {
-        const body = response?.text ? await response.text() : undefined;
-        reportHTTPError("non_200_response", {
-          ...response,
-          status: response.status,
-          url: args?.[0] || response.url,
-          body,
-          method: args?.[1]?.method || "GET",
-          origin: window.location.origin,
-        });
-      }
-
-      return response;
-    } catch (error) {
-      // Handle any other fetch errors (e.g., network issues)
-      reportHTTPError("fetch_error", {
-        message: error?.message,
-        stack: error?.stack,
-        url: args?.[0],
-        method: args?.[1]?.method || "GET",
-        origin: window.location.origin,
-      });
-      throw error;
-    }
-  };
-};
-
 export const loadReportErrorEventListener = (() => {
   let isInitialized = false;
 
@@ -56,28 +14,6 @@ export const loadReportErrorEventListener = (() => {
       const { lineno, colno, filename, message } = event;
       return `${message}|${filename}|${lineno}|${colno}`;
     };
-
-    const reportHTTPError = async (type, response) => {
-      if (type === "non_200_response") {
-        postMessage({
-          type: "FETCH_ERROR",
-          error: {
-            message: `failed to call url ${response.url} with status ${response.status} and statusText ${response.statusText}`,
-            status: response.status,
-            statusText: response.statusText,
-            url: response.url,
-            body: response.body,
-          },
-        });
-      } else if (type === "fetch_error") {
-        postMessage({
-          type: "FETCH_ERROR",
-          error: response,
-        });
-      }
-    };
-
-    patchFetch(reportHTTPError);
 
     const isErrorAlreadyReported = (errorId) => {
       if (reportedErrors.has(errorId)) {
@@ -99,7 +35,17 @@ export const loadReportErrorEventListener = (() => {
 
       const error = extractError(event);
 
-      postMessage({ type: "RUNTIME_ERROR", error });
+      console.log("GOTERR EVENT", event);
+      console.log("GOTERR ", error);
+
+      window.top.postMessage(
+        { type: "RUNTIME_ERROR", error },
+        "https://gptengineer.app"
+      );
+      window.top.postMessage(
+        { type: "RUNTIME_ERROR", error },
+        "http://localhost:3000"
+      );
     };
 
     // Listen to runtime errors and report them to the parent window
@@ -124,7 +70,17 @@ export const loadReportErrorEventListener = (() => {
         stack: event.reason?.stack || String(event.reason),
       };
 
-      postMessage({ type: "UNHANDLED_PROMISE_REJECTION", error });
+      console.log("GOT UNHANDLED PROMISE REJECTION", event);
+      console.log("GOT UNHANDLED PROMISE REJECTION ", error);
+
+      window.top.postMessage(
+        { type: "UNHANDLED_PROMISE_REJECTION", error },
+        "https://gptengineer.app"
+      );
+      window.top.postMessage(
+        { type: "UNHANDLED_PROMISE_REJECTION", error },
+        "http://localhost:3000"
+      );
     });
 
     isInitialized = true;
