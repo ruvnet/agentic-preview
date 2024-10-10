@@ -12,7 +12,8 @@ from fastapi.responses import RedirectResponse, StreamingResponse, JSONResponse
 import logging
 import uuid
 from sqlalchemy.orm import Session
-from ..crud import get_db, update_project_user_data
+from ..crud import get_db
+from ..models import Project
 from ..models import Project
 import traceback
 
@@ -20,7 +21,7 @@ import traceback
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 def get_project_directory(project_id: str) -> Path:
-    return BASE_DIR / 'projects' / project_id
+    return BASE_DIR / 'projects' / str(project_id)
 
 router = APIRouter()
 
@@ -394,10 +395,22 @@ async def clone_repo(request: CloneRequest = Body(
     example={"repo_url": "username/repo", "user_id": "user123"},
     description="GitHub repository URL to clone and user ID"
 )):
-    repo_id = str(uuid.uuid4())
-    project_dir = get_project_directory(repo_id)
-
     try:
+        # Create a new project in the database
+        db = next(get_db())
+        project_name = request.repo_url.split('/')[-1]
+        new_project = Project(
+            name=project_name,
+            user_id=request.user_id,
+            repo_url=request.repo_url
+        )
+        db.add(new_project)
+        db.commit()
+        db.refresh(new_project)
+
+        repo_id = new_project.id  # Use the database-generated ID
+        project_dir = get_project_directory(repo_id)
+
         # Construct the full GitHub repository URL
         clone_url = f"https://github.com/{request.repo_url}.git"
 
@@ -414,12 +427,9 @@ async def clone_repo(request: CloneRequest = Body(
         if process.returncode != 0:
             error_message = f"Clone failed: {stderr.decode()}"
             logger.error(error_message)
+            db.delete(new_project)
+            db.commit()
             raise HTTPException(status_code=400, detail=error_message)
-
-        # Update the database
-        db = next(get_db())
-        project_name = request.repo_url.split('/')[-1]
-        update_project_user_data(project_name, request.user_id, request.repo_url, db)
 
         # Add the cloned repository to the cloned_repos dictionary
         cloned_repos[repo_id] = str(project_dir)
