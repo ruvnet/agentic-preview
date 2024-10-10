@@ -2,6 +2,27 @@
 
 import os
 import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(name)s:%(lineno)d %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
+logger = logging.getLogger(__name__)
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECTS_DIR = os.path.join(BASE_DIR, 'projects')
+
+logger.debug(f"Base directory: {BASE_DIR}")
+logger.debug(f"Projects directory: {PROJECTS_DIR}")
+
+if os.path.exists(PROJECTS_DIR):
+    logger.debug("Contents of projects directory:")
+    for item in os.listdir(PROJECTS_DIR):
+        logger.debug(f" - {item}")
+else:
+    logger.debug("Projects directory does not exist")
+
 from fastapi import FastAPI
 from .api import aider, deploy, users, projects, architect, editor, cost_summary
 from .database import init_db
