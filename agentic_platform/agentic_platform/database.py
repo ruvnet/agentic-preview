@@ -18,19 +18,22 @@ def init_db():
     # Add new columns if they don't exist
     with engine.connect() as conn:
         inspector = inspect(engine)
-        existing_columns = [col['name'] for col in inspector.get_columns('projects')]
-        
-        if 'created_at' not in existing_columns:
-            conn.execute(text("ALTER TABLE projects ADD COLUMN created_at DATETIME"))
-        
-        if 'updated_at' not in existing_columns:
-            conn.execute(text("ALTER TABLE projects ADD COLUMN updated_at DATETIME"))
-        
-        if 'total_cost' not in existing_columns:
-            conn.execute(text("ALTER TABLE projects ADD COLUMN total_cost FLOAT DEFAULT 0.0"))
-        
-        if 'repo_url' not in existing_columns:
-            conn.execute(text("ALTER TABLE projects ADD COLUMN repo_url TEXT"))
+        if 'projects' not in inspector.get_table_names():
+            Base.metadata.tables['projects'].create(bind=engine)
+        else:
+            existing_columns = [col['name'] for col in inspector.get_columns('projects')]
+            
+            if 'created_at' not in existing_columns:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN created_at DATETIME"))
+            
+            if 'updated_at' not in existing_columns:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN updated_at DATETIME"))
+            
+            if 'total_cost' not in existing_columns:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN total_cost FLOAT DEFAULT 0.0"))
+            
+            if 'repo_url' not in existing_columns:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN repo_url TEXT"))
         
         # Check if users table exists, if not create it
         if 'users' not in inspector.get_table_names():
