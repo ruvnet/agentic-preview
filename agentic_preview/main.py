@@ -4,7 +4,6 @@ import json
 import shutil
 from datetime import datetime
 from typing import List, Optional
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -487,17 +486,7 @@ async def create_dockerfile(repo_path):
         logger.error(f"Error creating Dockerfile: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-from contextlib import asynccontextmanager
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup code (if any) goes here
-    yield
-    # Shutdown code goes here
-    await cleanup()
-
-app = FastAPI(lifespan=lifespan)
-
+@app.on_event("shutdown")
 async def cleanup():
     # Clean up cloned repositories
     for repo_id, repo_path in cloned_repos.items():
