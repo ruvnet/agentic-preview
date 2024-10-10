@@ -745,21 +745,28 @@ async def create_dockerfile(
             raise HTTPException(status_code=404, detail=error_message)
         
         # List contents of the project directory
-        debug_info["project_contents"] = os.listdir(project_dir)
+        project_contents = os.listdir(project_dir)
+        debug_info["project_contents"] = project_contents
         
         # Check if Dockerfile already exists
         dockerfile_path = project_dir / "Dockerfile"
         if dockerfile_path.exists():
             return {"message": "Dockerfile already exists", "debug_info": debug_info}
         
-        # Prepare the Aider command
+        # Prepare the Aider command with more context
         aider_command = [
             "aider",
             "--yes-always",
-            f"--work-dir={project_dir}",
-            "--model=gpt-4o-mini",
-            "--use-github",
-            "--message=Review the files and folder structure in this project. Identify the main application, its dependencies, and any specific requirements. Then, create a Dockerfile that can build and run this application. The Dockerfile should be optimized for production use and follow best practices. Include comments in the Dockerfile to explain each step."
+            f"--file={project_dir}",
+            "--message=Review the files and folder structure in this project. The project contents are: " + 
+            ", ".join(project_contents) + 
+            ". Identify the main application, its dependencies, and any specific requirements. " +
+            "If a requirements.txt file exists, use it to determine dependencies. " +
+            "If you can't find enough information to create a complete Dockerfile, " +
+            "create a basic Dockerfile with placeholders and comments explaining what additional information is needed. " +
+            "Then, create a Dockerfile that can build and run this application. " +
+            "The Dockerfile should be optimized for production use and follow best practices. " +
+            "Include comments in the Dockerfile to explain each step."
         ]
         debug_info["aider_command"] = " ".join(aider_command)
         
@@ -782,9 +789,10 @@ async def create_dockerfile(
                 "debug_info": debug_info
             }
         else:
-            debug_info["error"] = "Dockerfile creation failed"
+            # If Dockerfile wasn't created, return Aider's output for further analysis
             return {
-                "message": "Dockerfile creation failed",
+                "message": "Dockerfile creation needs more information",
+                "aider_output": debug_info["aider_stdout"],
                 "debug_info": debug_info
             }
     
