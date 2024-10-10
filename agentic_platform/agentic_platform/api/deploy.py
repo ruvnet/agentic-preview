@@ -17,11 +17,10 @@ from ..models import Project
 import traceback
 
 # Define the base directory for projects using pathlib for robust path handling
-BASE_DIR = Path(__file__).resolve().parent.parent
-PROJECTS_BASE_DIR = BASE_DIR / 'projects'
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 def get_project_directory(project_id: str) -> Path:
-    return PROJECTS_BASE_DIR / project_id
+    return BASE_DIR / 'projects' / project_id
 
 router = APIRouter()
 
@@ -708,13 +707,13 @@ async def stream_aider_output(process):
 @router.post("/docker", response_model=Dict[str, Any], summary="Create Dockerfile",
              description="Generate a Dockerfile for a specified project using Aider.")
 async def create_dockerfile(
-    project_id: str = Body(..., embed=True, description="Unique identifier of the project"),
+    repo_id: str = Body(..., embed=True, description="Unique identifier of the project"),
     db: Session = Depends(get_db)
 ):
     debug_info = {}
     try:
         # Retrieve the project from the database using id
-        project = db.query(Project).filter(Project.id == project_id).first()
+        project = db.query(Project).filter(Project.id == repo_id).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
