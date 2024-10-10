@@ -751,9 +751,8 @@ async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = 
         aider_command = [
             "aider",
             "--yes-always",
-            "--no-git",
             f"--work-dir={project_dir}",
-            "--model=gpt-4-0314",
+            "--model=gpt-4o-mini",
             "--use-github",
             "--message=Review the files and folder structure in this project. Identify the main application, its dependencies, and any specific requirements. Then, create a Dockerfile that can build and run this application. The Dockerfile should be optimized for production use and follow best practices. Include comments in the Dockerfile to explain each step."
         ]
