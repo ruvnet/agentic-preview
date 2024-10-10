@@ -23,6 +23,8 @@ import os
 import asyncio
 import traceback
 
+PROJECTS_BASE_DIR = os.environ.get('PROJECTS_BASE_DIR', '/agentic-preview/projects')
+
 def get_project_directory(project_id: str) -> str:
     return os.path.join("projects", project_id)
 
@@ -728,16 +730,15 @@ async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = 
         debug_info["current_dir"] = current_dir
         
         # Construct the project path
-        projects_dir = os.path.abspath(os.path.join(current_dir, "..", "projects"))
-        project_dir = os.path.join("/agentic-preview/projects", str(project.id))
-        debug_info["projects_dir"] = projects_dir
+        project_dir = os.path.join(PROJECTS_BASE_DIR, str(project.id))
         debug_info["project_dir"] = project_dir
         
         # Check if the project directory exists
         if not os.path.exists(project_dir):
-            debug_info["error"] = f"Project directory does not exist: {project_dir}"
-            logger.error(debug_info["error"])
-            raise HTTPException(status_code=404, detail="Project directory not found")
+            error_message = f"Project directory not found: {project_dir}"
+            debug_info["error"] = error_message
+            logger.error(error_message)
+            raise HTTPException(status_code=404, detail=error_message)
         
         # List contents of the project directory
         debug_info["project_contents"] = os.listdir(project_dir)
