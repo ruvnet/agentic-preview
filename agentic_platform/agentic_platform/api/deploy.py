@@ -35,7 +35,7 @@ class DeployRequest(BaseModel):
     repo: str
     branch: str
     args: Optional[List[str]] = []
-    memory: Optional[int] = 2048  # Memory in MB, default to 2048 MB (2GB)
+    memory: Optional[int] = 2048
     app_name: Optional[str] = None
 
     class Config:
@@ -46,6 +46,16 @@ class DeployRequest(BaseModel):
                 "args": ["--build-arg", "ENV=production"],
                 "memory": 2048,
                 "app_name": "my-app"
+            }
+        }
+        schema_extra = {
+            "description": "Request model for deploying an application",
+            "properties": {
+                "repo": {"description": "GitHub repository in the format 'username/repo'"},
+                "branch": {"description": "Git branch to deploy"},
+                "args": {"description": "Additional arguments for deployment"},
+                "memory": {"description": "Memory allocation in MB"},
+                "app_name": {"description": "Optional custom name for the application"}
             }
         }
 
@@ -197,7 +207,9 @@ app = "{app_name}"
             shutil.rmtree(repo_dir, ignore_errors=True)
             logger.info(f"Cleaned up repository directory: {repo_dir}")
 
-@router.post("/deploy")
+@router.post("/deploy", response_model=Dict[str, str], 
+             summary="Deploy an application",
+             description="Clone a GitHub repository, deploy it to Fly.io, and return deployment status")
 async def deploy(deploy_request: DeployRequest = Body(
     ...,
     example={
@@ -288,8 +300,13 @@ async def deploy(deploy_request: DeployRequest = Body(
             logger.info(f"Cleaned up repository directory: {repo_dir}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/status/{app_name}")
-async def check_status(app_name: str):
+@router.get("/status/{app_name}", 
+            response_model=Dict[str, Any],
+            summary="Check deployment status",
+            description="Get the current status of a deployed application")
+async def check_status(
+    app_name: str = Path(..., description="Name of the deployed application")
+):
     try:
         logger.info(f"Checking status for app: {app_name}")
         if app_name in deployments:
@@ -301,7 +318,10 @@ async def check_status(app_name: str):
         logger.error(f"Error checking app status: {e}")
         raise HTTPException(status_code=500, detail=f"Error checking app status: {str(e)}")
 
-@router.get("/logs/{app_name}")
+@router.get("/logs/{app_name}", 
+            response_class=StreamingResponse,
+            summary="Stream application logs",
+            description="Stream real-time logs from a deployed application")
 async def stream_logs(
     app_name: str = Path(..., example="my-app", description="Name of the application to stream logs from")
 ):
@@ -343,7 +363,10 @@ async def stream_logs(
 
     return StreamingResponse(log_streamer(), media_type="text/event-stream")
 
-@router.get("/apps")
+@router.get("/apps", 
+            response_model=Dict[str, str],
+            summary="List all applications",
+            description="List all applications deployed on Fly.io")
 async def list_apps():
     try:
         logger.info("Listing all apps")
@@ -354,8 +377,15 @@ async def list_apps():
         return {"detail": f"Error listing apps: {str(e)}. Make sure flyctl is installed and you're authenticated with Fly.io."}
 
 # New endpoints for cloning and exploring repositories
-@router.post("/clone")
-async def clone_repo(request: CloneRequest):
+@router.post("/clone", 
+             response_model=Dict[str, str],
+             summary="Clone a repository",
+             description="Clone a GitHub repository to a temporary directory")
+async def clone_repo(request: CloneRequest = Body(
+    ...,
+    example={"repo_url": "username/repo"},
+    description="GitHub repository URL to clone"
+)):
     repo_id = str(uuid.uuid4())
     temp_dir = f"/tmp/{repo_id}"
 
@@ -387,7 +417,10 @@ async def list_repo_ids():
     return {"repo_ids": list(cloned_repos.keys())}
 
 
-@router.post("/explore")
+@router.post("/explore", 
+             response_model=Dict[str, Any],
+             summary="Explore repository",
+             description="Explore, modify, create, or remove files in a cloned repository")
 async def explore_repo(request: ExploreRequest = Body(
     ...,
     example={
@@ -395,7 +428,8 @@ async def explore_repo(request: ExploreRequest = Body(
         "action": "explore",
         "path": "/app",
         "content": ""
-    }
+    },
+    description="Request to explore or modify repository contents"
 )):
     if request.repo_id not in cloned_repos:
         logger.warning(f"Repository not found for ID: {request.repo_id}")
