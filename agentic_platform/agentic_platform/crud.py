@@ -12,7 +12,7 @@ def get_db():
     finally:
         db.close()
 
-def update_project_user_data(project_name: str, user_id: str, db: Session):
+def update_project_user_data(project_name: str, user_id: str, repo_url: str, db: Session):
     user = db.query(models.User).filter(models.User.user_id == user_id).first()
     if not user:
         user = models.User(user_id=user_id)
@@ -20,10 +20,11 @@ def update_project_user_data(project_name: str, user_id: str, db: Session):
     
     project = db.query(models.Project).filter(models.Project.name == project_name, models.Project.user_id == user_id).first()
     if not project:
-        project = models.Project(name=project_name, user_id=user_id)
+        project = models.Project(name=project_name, user_id=user_id, repo_url=repo_url)
         db.add(project)
     else:
         project.last_updated = datetime.utcnow()
+        project.repo_url = repo_url
     
     try:
         db.commit()

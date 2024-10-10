@@ -16,6 +16,7 @@ class Project(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     user_id = Column(String, ForeignKey("users.user_id"))
+    repo_url = Column(String)  # Add this line
     created_at = Column(DateTime, default=datetime.utcnow)
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     total_cost = Column(Float, default=0.0)

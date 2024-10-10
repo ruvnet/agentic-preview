@@ -421,7 +421,7 @@ async def clone_repo(request: CloneRequest = Body(
         # Update the database
         db = next(get_db())
         project_name = request.repo_url.split('/')[-1]
-        update_project_user_data(project_name, request.user_id, db)
+        update_project_user_data(project_name, request.user_id, request.repo_url, db)
 
         logger.info(f"Repository cloned successfully with ID: {repo_id}")
         return {"repo_id": repo_id, "message": "Repository cloned successfully and project created"}
@@ -609,6 +609,7 @@ async def list_projects():
                 "id": project.id,
                 "name": project.name,
                 "user_id": project.user_id,
+                "repo_url": project.repo_url,  # Add this line
                 "created_at": project.created_at,
                 "updated_at": project.last_updated
             }
