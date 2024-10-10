@@ -19,6 +19,8 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from ..crud import get_db
 from ..models import Project
+import os
+import asyncio
 
 router = APIRouter()
 
@@ -702,3 +704,52 @@ async def delete_project(
     db.commit()
     
     return {"message": "Project deleted successfully"}
+async def stream_aider_output(process):
+    async for line in process.stdout:
+        logger.info(line.decode().strip())
+@router.post("/docker", response_model=Dict[str, str])
+async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = Depends(get_db)):
+    try:
+        # Get the project path
+        project = db.query(Project).filter(Project.id == repo_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        project_path = f"projects/{project.id}"
+        
+        # Check if Dockerfile already exists
+        dockerfile_path = os.path.join(project_path, "Dockerfile")
+        if os.path.exists(dockerfile_path):
+            return {"message": "Dockerfile already exists"}
+        
+        # Prepare the Aider command
+        aider_command = [
+            "aider",
+            "--no-git",
+            f"--work-dir={project_path}",
+            "--model=gpt-4",
+            "--message=Create a Dockerfile for this project based on its structure and files."
+        ]
+        
+        # Run Aider and stream output
+        process = await asyncio.create_subprocess_exec(
+            *aider_command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        await stream_aider_output(process)
+        
+        # Wait for the process to complete
+        await process.wait()
+        
+        # Check if Dockerfile was created
+        if os.path.exists(dockerfile_path):
+            with open(dockerfile_path, 'r') as f:
+                dockerfile_content = f.read()
+            return {"message": "Dockerfile created successfully", "content": dockerfile_content}
+        else:
+            return {"message": "Dockerfile creation failed"}
+    
+    except Exception as e:
+        logger.error(f"Error creating Dockerfile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

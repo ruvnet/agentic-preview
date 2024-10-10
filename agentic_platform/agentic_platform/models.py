@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 
 Base = declarative_base()
 
@@ -12,12 +14,10 @@ class User(Base):
     user_id = Column(String, unique=True, index=True)
     projects = relationship("Project", back_populates="user")
 
-import uuid
-
 class Project(Base):
     __tablename__ = "projects"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))  # This creates the foreign key relationship
     repo_url = Column(String)
