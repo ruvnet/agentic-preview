@@ -318,7 +318,7 @@ async def deploy(deploy_request: DeployRequest = Body(
             summary="Check deployment status",
             description="Get the current status of a deployed application")
 async def check_status(
-    app_name: str = Path(..., description="Name of the deployed application")
+    app_name: str = PathParam(..., description="Name of the deployed application")
 ):
     try:
         logger.info(f"Checking status for app: {app_name}")
