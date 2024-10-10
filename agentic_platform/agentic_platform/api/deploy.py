@@ -14,6 +14,9 @@ import uuid
 from sqlalchemy.orm import Session
 from ..crud import get_db
 from ..models import Project
+from sqlalchemy.orm import Session
+from ..crud import get_db
+from ..models import Project
 
 router = APIRouter()
 
@@ -61,6 +64,7 @@ class DeployRequest(BaseModel):
 
 class CloneRequest(BaseModel):
     repo_url: str
+    user_id: str
 
 class ExploreRequest(BaseModel):
     repo_id: str
@@ -380,21 +384,25 @@ async def list_apps():
 @router.post("/clone", 
              response_model=Dict[str, str],
              summary="Clone a repository",
-             description="Clone a GitHub repository to a temporary directory")
+             description="Clone a GitHub repository and create a new project")
 async def clone_repo(request: CloneRequest = Body(
     ...,
-    example={"repo_url": "username/repo"},
-    description="GitHub repository URL to clone"
+    example={"repo_url": "username/repo", "user_id": "user123"},
+    description="GitHub repository URL to clone and user ID"
 )):
     repo_id = str(uuid.uuid4())
-    temp_dir = f"/tmp/{repo_id}"
+    projects_dir = "/projects"
+    project_dir = os.path.join(projects_dir, repo_id)
 
     try:
         # Construct the full GitHub repository URL
         clone_url = f"https://github.com/{request.repo_url}.git"
 
+        # Create projects directory if it doesn't exist
+        os.makedirs(projects_dir, exist_ok=True)
+
         process = await asyncio.create_subprocess_exec(
-            "git", "clone", clone_url, temp_dir,
+            "git", "clone", clone_url, project_dir,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -405,9 +413,21 @@ async def clone_repo(request: CloneRequest = Body(
             logger.error(error_message)
             raise HTTPException(status_code=400, detail=error_message)
 
-        cloned_repos[repo_id] = temp_dir
+        # Update the database
+        db = next(get_db())
+        new_project = Project(
+            id=repo_id,
+            name=request.repo_url.split('/')[-1],
+            user_id=request.user_id,
+            repo_url=request.repo_url,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db.add(new_project)
+        db.commit()
+
         logger.info(f"Repository cloned successfully with ID: {repo_id}")
-        return {"repo_id": repo_id, "message": "Repository cloned successfully"}
+        return {"repo_id": repo_id, "message": "Repository cloned successfully and project created"}
     except Exception as e:
         logger.error(f"Error cloning repository: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -539,6 +559,29 @@ async def create_dockerfile(repo_path):
         return {"message": "Dockerfile created successfully", "content": dockerfile_content}
     except Exception as e:
         logger.error(f"Error creating Dockerfile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/projects", 
+            response_model=List[Dict[str, Any]],
+            summary="List all projects",
+            description="Display all cloned GitHub repositories as projects")
+async def list_projects():
+    try:
+        db = next(get_db())
+        projects = db.query(Project).all()
+        return [
+            {
+                "id": project.id,
+                "name": project.name,
+                "user_id": project.user_id,
+                "repo_url": project.repo_url,
+                "created_at": project.created_at,
+                "updated_at": project.updated_at
+            }
+            for project in projects
+        ]
+    except Exception as e:
+        logger.error(f"Error listing projects: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.on_event("shutdown")
