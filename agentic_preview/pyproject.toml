@@ -6,7 +6,7 @@ authors = ["Your Name"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.9,<3.13"
 fastapi = "^0.115.0"
 uvicorn = {extras = ["standard"], version = "^0.31.0"}
 pydantic = "^2.9.2"
