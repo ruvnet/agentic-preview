@@ -564,25 +564,34 @@ async def create_dockerfile(repo_path):
         logger.error(f"Error creating Dockerfile: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/projects", 
-            response_model=List[Dict[str, Any]],
-            summary="List all projects",
-            description="Display all cloned GitHub repositories as projects")
-async def list_projects():
+@router.get("/projects", response_model=Dict[str, Any], summary="List all projects")
+async def list_projects(db: Session = Depends(get_db)):
     try:
-        db = next(get_db())
         projects = db.query(Project).all()
-        return [
+        project_list = [
             {
                 "id": project.id,
                 "name": project.name,
                 "user_id": project.user_id,
                 "repo_url": project.repo_url,
                 "created_at": project.created_at,
-                "updated_at": project.updated_at
+                "updated_at": project.updated_at,
+                "repo_id": project.id,  # Adding `repo_id` explicitly
+                "path": f"projects/{project.id}"  # Dynamically constructing `path`
             }
             for project in projects
         ]
+
+        return {
+            "projects": project_list,
+            "repositories": [
+                {
+                    "repo_id": project["repo_id"],
+                    "path": project["path"]
+                }
+                for project in project_list
+            ]
+        }
     except Exception as e:
         logger.error(f"Error listing projects: {e}")
         raise HTTPException(status_code=500, detail=str(e))
