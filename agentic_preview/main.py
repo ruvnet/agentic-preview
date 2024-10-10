@@ -338,7 +338,7 @@ async def list_apps():
         return {"apps": apps_output}
     except Exception as e:
         logger.error(f"Error listing apps: {e}")
-        raise HTTPException(status_code=500, detail=f"Error listing apps: {str(e)}")
+        return {"detail": f"Error listing apps: {str(e)}. Make sure flyctl is installed and you're authenticated with Fly.io."}
 
 # New endpoints for cloning and exploring repositories
 @app.post("/clone")
