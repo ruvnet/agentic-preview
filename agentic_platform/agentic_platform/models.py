@@ -12,10 +12,12 @@ class User(Base):
     user_id = Column(String, unique=True, index=True)
     projects = relationship("Project", back_populates="user")
 
+import uuid
+
 class Project(Base):
     __tablename__ = "projects"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     name = Column(String, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))  # This creates the foreign key relationship
     repo_url = Column(String)

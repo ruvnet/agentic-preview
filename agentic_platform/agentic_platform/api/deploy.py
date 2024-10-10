@@ -442,7 +442,7 @@ async def list_repos(db: Session = Depends(get_db)):
         projects = db.query(Project).all()
         return [
             {
-                "repo_id": str(project.id),
+                "repo_id": project.id,  # Assuming project.id is already a UUID string
                 "path": f"projects/{project.id}"
             }
             for project in projects
