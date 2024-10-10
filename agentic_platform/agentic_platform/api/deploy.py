@@ -22,6 +22,9 @@ from ..models import Project
 import os
 import asyncio
 
+def get_project_directory(project_id: str) -> str:
+    return os.path.join("projects", project_id)
+
 router = APIRouter()
 
 # Configurable runtime limit in seconds
@@ -710,28 +713,37 @@ async def stream_aider_output(process):
 @router.post("/docker", response_model=Dict[str, str])
 async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = Depends(get_db)):
     try:
-        # Get the project path
+        # Get the project from the database
         project = db.query(Project).filter(Project.id == repo_id).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
-        project_path = f"projects/{project.id}"
+        # Construct the project path
+        project_dir = get_project_directory(str(project.id))
+        
+        # Check if the project directory exists
+        if not os.path.exists(project_dir):
+            logger.error(f"Project directory does not exist: {project_dir}")
+            raise HTTPException(status_code=404, detail="Project directory not found")
         
         # Check if Dockerfile already exists
-        dockerfile_path = os.path.join(project_path, "Dockerfile")
+        dockerfile_path = os.path.join(project_dir, "Dockerfile")
         if os.path.exists(dockerfile_path):
             return {"message": "Dockerfile already exists"}
         
         # Initialize git repository if not already initialized
-        await execute_command(['git', 'init'], cwd=project_path)
-        await execute_command(['git', 'add', '.'], cwd=project_path)
+        try:
+            await execute_command(['git', 'status'], cwd=project_dir)
+        except Exception:
+            await execute_command(['git', 'init'], cwd=project_dir)
+        await execute_command(['git', 'add', '.'], cwd=project_dir)
         
         # Prepare the Aider command
         aider_command = [
             "aider",
             "--yes-always",
             "--no-git",
-            f"--work-dir={project_path}",
+            f"--work-dir={project_dir}",
             "--model=gpt-4",
             "--message=Review the files and folder structure in this project. Identify the main application, its dependencies, and any specific requirements. Then, create a Dockerfile that can build and run this application. The Dockerfile should be optimized for production use and follow best practices. Include comments in the Dockerfile to explain each step."
         ]
