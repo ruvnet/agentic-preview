@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from .editor.main import editor_router
-from .preview.main import preview_router
+from agentic_platform.editor.main import editor_router
+from agentic_platform.preview.main import preview_router
 
 app = FastAPI()
 
