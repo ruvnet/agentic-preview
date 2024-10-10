@@ -46,4 +46,18 @@ The Agentic Platform introduces additional configuration files:
 
 These configuration files are crucial for setting up and interacting with the database in the Agentic Platform.
 
+## Deployment Configuration
+
+1. **Dockerfile**
+   - Location: Root directory
+   - Purpose: Defines the Docker container configuration for the application
+   - Key features:
+     - Uses Python 3.8-slim as the base image
+     - Installs Poetry for dependency management
+     - Copies only necessary files to optimize build time and image size
+     - Exposes port 5000 for the FastAPI application
+     - Uses Uvicorn to run the FastAPI application
+
+The Dockerfile plays a crucial role in containerizing the application, ensuring consistent deployment across different environments.
+
 For more detailed information on each file's contents and usage, please refer to the files directly in the repository root.
