@@ -31,3 +31,7 @@ def init_db():
         
         if 'repo_url' not in existing_columns:
             conn.execute(text("ALTER TABLE projects ADD COLUMN repo_url TEXT"))
+        
+        # Check if users table exists, if not create it
+        if 'users' not in inspector.get_table_names():
+            Base.metadata.tables['users'].create(bind=engine)

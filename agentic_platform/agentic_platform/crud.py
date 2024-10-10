@@ -23,13 +23,14 @@ def update_project_user_data(project_name: str, user_id: str, repo_url: str, db:
         project = models.Project(name=project_name, user_id=user_id, repo_url=repo_url)
         db.add(project)
     else:
-        project.last_updated = datetime.utcnow()
+        project.updated_at = datetime.utcnow()
         project.repo_url = repo_url
     
     try:
         db.commit()
     except:
         db.rollback()
+        raise
 
 def remove_old_projects(db: Session, age: timedelta = None, user_id: str = None):
     query = db.query(models.Project)
