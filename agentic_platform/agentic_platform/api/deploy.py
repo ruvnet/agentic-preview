@@ -6,7 +6,7 @@ import shutil
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Union
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Body, Path as PathParam, Query, Depends
+from fastapi import APIRouter, HTTPException, Body, Query, Depends
 from pydantic import BaseModel
 from fastapi.responses import RedirectResponse, StreamingResponse, JSONResponse
 import logging
@@ -335,9 +335,7 @@ async def check_status(
             response_class=StreamingResponse,
             summary="Stream application logs",
             description="Stream real-time logs from a deployed application")
-async def stream_logs(
-    app_name: str = Path(..., example="my-app", description="Name of the application to stream logs from")
-):
+async def stream_logs(app_name: str):
     if app_name not in deployments:
         logger.warning(f"No deployment found for app: {app_name}")
         raise HTTPException(status_code=404, detail=f"No deployment found for app: {app_name}")
