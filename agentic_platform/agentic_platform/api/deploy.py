@@ -4,7 +4,7 @@ import asyncio
 import json
 import shutil
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 
 from fastapi import APIRouter, HTTPException, Body, Path, Query, Depends
 from pydantic import BaseModel
@@ -436,7 +436,7 @@ async def clone_repo(request: CloneRequest = Body(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/repos", 
-            response_model=List[Dict[str, str]],
+            response_model=List[Dict[str, Any]],
             summary="List cloned repositories",
             description="List all cloned repositories with their IDs and paths")
 async def list_repos(db: Session = Depends(get_db)):
@@ -444,7 +444,7 @@ async def list_repos(db: Session = Depends(get_db)):
         projects = db.query(Project).all()
         return [
             {
-                "repo_id": project.id,  # Assuming project.id is already a UUID string
+                "repo_id": str(project.id),  # Convert UUID to string
                 "path": f"projects/{project.id}"
             }
             for project in projects
