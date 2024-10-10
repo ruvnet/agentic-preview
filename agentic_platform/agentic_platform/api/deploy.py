@@ -14,7 +14,7 @@ import uuid
 from sqlalchemy.orm import Session
 from ..crud import get_db, update_project_user_data
 from ..models import Project
-from typing import List, Dict
+from typing import List, Dict, Any
 from typing import Optional
 from sqlalchemy.orm import Session
 from ..crud import get_db
@@ -708,7 +708,7 @@ async def stream_aider_output(process):
     async for line in process.stdout:
         logger.info(line.decode().strip())
 @router.post("/docker", response_model=Dict[str, str])
-async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = Depends(get_db)):
+async def create_dockerfile(repo_id: str = Body(...), db: Session = Depends(get_db)):
     try:
         # Get the project path
         project = db.query(Project).filter(Project.id == repo_id).first()
