@@ -6,7 +6,7 @@ import shutil
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body, Path, Query
 from pydantic import BaseModel
 from fastapi.responses import RedirectResponse, StreamingResponse
 import logging
@@ -36,6 +36,7 @@ class DeployRequest(BaseModel):
     branch: str
     args: Optional[List[str]] = []
     memory: Optional[int] = 2048  # Memory in MB, default to 2048 MB (2GB)
+    app_name: Optional[str] = None
 
     class Config:
         json_schema_extra = {
@@ -43,7 +44,8 @@ class DeployRequest(BaseModel):
                 "repo": "ruvnet/agentic_preview",
                 "branch": "main",
                 "args": ["--build-arg", "ENV=production"],
-                "memory": 2048
+                "memory": 2048,
+                "app_name": "my-app"
             }
         }
 
@@ -196,7 +198,16 @@ app = "{app_name}"
             logger.info(f"Cleaned up repository directory: {repo_dir}")
 
 @router.post("/deploy")
-async def deploy(deploy_request: DeployRequest):
+async def deploy(deploy_request: DeployRequest = Body(
+    ...,
+    example={
+        "repo": "ruvnet/agentic_preview",
+        "branch": "main",
+        "args": ["--build-arg", "ENV=production"],
+        "memory": 2048,
+        "app_name": "my-app"
+    }
+)):
     app_name: Optional[str] = None
     repo_dir: Optional[str] = None  # Initialize repo_dir
     try:
@@ -291,7 +302,9 @@ async def check_status(app_name: str):
         raise HTTPException(status_code=500, detail=f"Error checking app status: {str(e)}")
 
 @router.get("/logs/{app_name}")
-async def stream_logs(app_name: str):
+async def stream_logs(
+    app_name: str = Path(..., example="my-app", description="Name of the application to stream logs from")
+):
     if app_name not in deployments:
         logger.warning(f"No deployment found for app: {app_name}")
         raise HTTPException(status_code=404, detail=f"No deployment found for app: {app_name}")
@@ -375,7 +388,15 @@ async def list_repo_ids():
 
 
 @router.post("/explore")
-async def explore_repo(request: ExploreRequest):
+async def explore_repo(request: ExploreRequest = Body(
+    ...,
+    example={
+        "repo_id": "123e4567-e89b-12d3-a456-426614174000",
+        "action": "explore",
+        "path": "/app",
+        "content": ""
+    }
+)):
     if request.repo_id not in cloned_repos:
         logger.warning(f"Repository not found for ID: {request.repo_id}")
         raise HTTPException(status_code=404, detail="Repository not found")
