@@ -41,3 +41,6 @@ For new users, we recommend starting with the [Repository Overview](./repository
 If you find any inconsistencies in the documentation or have suggestions for improvement, please open an issue on our GitHub repository or contact the development team.
 
 Thank you for using Agentic Preview!
+
+
+rc2
