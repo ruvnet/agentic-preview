@@ -729,7 +729,7 @@ async def create_dockerfile(repo_id: str = Body(..., embed=True), db: Session = 
         
         # Construct the project path
         projects_dir = os.path.abspath(os.path.join(current_dir, "..", "projects"))
-        project_dir = os.path.join(projects_dir, str(project.id))
+        project_dir = os.path.join("/agentic-preview/projects", str(project.id))
         debug_info["projects_dir"] = projects_dir
         debug_info["project_dir"] = project_dir
         
