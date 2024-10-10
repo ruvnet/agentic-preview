@@ -486,7 +486,17 @@ async def create_dockerfile(repo_path):
         logger.error(f"Error creating Dockerfile: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.on_event("shutdown")
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup code (if any) goes here
+    yield
+    # Shutdown code goes here
+    await cleanup()
+
+app = FastAPI(lifespan=lifespan)
+
 async def cleanup():
     # Clean up cloned repositories
     for repo_id, repo_path in cloned_repos.items():
