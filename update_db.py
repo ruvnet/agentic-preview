@@ -4,7 +4,7 @@ import os
 # Add the parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Column, String, DateTime, Float
 from sqlalchemy.orm import sessionmaker
 from agentic_platform.agentic_platform.models import Base, Project
 from agentic_platform.agentic_platform.database import DATABASE_URL as SQLALCHEMY_DATABASE_URL
@@ -38,7 +38,7 @@ def update_database():
             if 'id' not in columns or inspector.get_columns('projects')[0]['type'] != String:
                 db.execute(text("ALTER TABLE projects RENAME TO projects_old"))
                 Base.metadata.create_all(bind=engine)
-                db.execute(text("INSERT INTO projects (id, name, user_id, repo_url, created_at, updated_at, total_cost) SELECT CAST(id AS TEXT), name, user_id, repo_url, created_at, last_updated, total_cost FROM projects_old"))
+                db.execute(text("INSERT INTO projects (id, name, user_id, repo_url, created_at, updated_at, total_cost) SELECT CAST(id AS TEXT), name, user_id, repo_url, created_at, updated_at, total_cost FROM projects_old"))
                 db.execute(text("DROP TABLE projects_old"))
                 print("Updated projects table schema")
         else:
