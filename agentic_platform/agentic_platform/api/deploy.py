@@ -395,18 +395,17 @@ async def clone_repo(request: CloneRequest = Body(
     description="GitHub repository URL to clone and user ID"
 )):
     repo_id = str(uuid.uuid4())
-    projects_dir = "projects"  # Changed from "/projects" to match the existing structure
-    project_dir = os.path.join(projects_dir, repo_id)
+    project_dir = get_project_directory(repo_id)
 
     try:
         # Construct the full GitHub repository URL
         clone_url = f"https://github.com/{request.repo_url}.git"
 
         # Create projects directory if it doesn't exist
-        os.makedirs(projects_dir, exist_ok=True)
+        project_dir.parent.mkdir(parents=True, exist_ok=True)
 
         process = await asyncio.create_subprocess_exec(
-            "git", "clone", clone_url, project_dir,
+            "git", "clone", clone_url, str(project_dir),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -423,7 +422,7 @@ async def clone_repo(request: CloneRequest = Body(
         update_project_user_data(project_name, request.user_id, request.repo_url, db)
 
         # Add the cloned repository to the cloned_repos dictionary
-        cloned_repos[repo_id] = project_dir
+        cloned_repos[repo_id] = str(project_dir)
 
         logger.info(f"Repository cloned successfully with ID: {repo_id}")
         return {"repo_id": repo_id, "message": "Repository cloned successfully and project created"}
