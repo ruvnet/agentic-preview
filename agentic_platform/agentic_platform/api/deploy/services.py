@@ -5,30 +5,10 @@ import shutil
 from datetime import datetime
 from typing import List, Optional
 from fastapi import HTTPException
-from .utils import get_project_directory, is_fly_installed
+from .utils import get_project_directory, is_fly_installed, execute_command
 import logging
 
 logger = logging.getLogger(__name__)
-
-async def execute_command(cmd: List[str], cwd: Optional[str] = None):
-    logger.debug(f"Executing command: {' '.join(cmd)} in directory: {cwd}")
-    process = await asyncio.create_subprocess_exec(
-        *cmd,
-        cwd=cwd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-    stdout, stderr = await process.communicate()
-
-    logger.debug(f"Command stdout: {stdout.decode()}")
-    logger.debug(f"Command stderr: {stderr.decode()}")
-
-    if process.returncode != 0:
-        error_message = f"Command {' '.join(cmd)} failed with error code {process.returncode}\nstdout:\n{stdout.decode()}\nstderr:\n{stderr.decode()}"
-        logger.error(error_message)
-        raise Exception(error_message)
-
-    return stdout.decode()
 
 async def deploy_app(repo: str, branch: str, args: List[str], app_name: str, repo_dir: str, memory: int):
     try:
