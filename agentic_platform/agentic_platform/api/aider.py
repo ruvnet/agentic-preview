@@ -46,6 +46,32 @@ class BugFixConfig(BaseModel):
     bug_description: str
     files: List[str]
 
+class FrameworkConfig(BaseModel):
+    project_name: str
+    user_id: str
+    framework: str
+    task: str
+    details: str
+
+class ApplicationConfig(BaseModel):
+    project_name: str
+    user_id: str
+    app_type: str
+    requirements: str
+
+class LanguageConfig(BaseModel):
+    project_name: str
+    user_id: str
+    language: str
+    task: str
+    files: List[str]
+
+class CodeManagementConfig(BaseModel):
+    project_name: str
+    user_id: str
+    task: str
+    files: List[str]
+
 def run_aider(config: AiderConfig, project_path: str):
     command = [
         "aider",
@@ -232,6 +258,116 @@ async def bug_fix(config: BugFixConfig, db: Session = Depends(get_db)):
         "project_name": config.project_name,
         "user_id": config.user_id,
         "bug_fix_output": processed_output,
+        "estimated_cost": estimated_cost
+    }
+
+@code_bot_router.post("/framework")
+async def framework_task(config: FrameworkConfig, db: Session = Depends(get_db)):
+    project_path = os.path.join("projects", f"{config.project_name}_{config.user_id}")
+    os.makedirs(project_path, exist_ok=True)
+
+    aider_config = AiderConfig(
+        chat_mode="framework",
+        edit_format="diff",
+        model="claude-3-5-sonnet-20240620",
+        prompt=f"Using {config.framework}, {config.task}. Details: {config.details}",
+        files=[],
+        project_name=config.project_name,
+        user_id=config.user_id
+    )
+
+    output, error = await asyncio.to_thread(run_aider, aider_config, project_path)
+    processed_output = process_aider_output(output.split('\n'))
+
+    estimated_cost = len(config.details) * 0.00001  # Example cost calculation
+    update_project_cost(db, config.project_name, config.user_id, estimated_cost)
+
+    return {
+        "project_name": config.project_name,
+        "user_id": config.user_id,
+        "framework_task_output": processed_output,
+        "estimated_cost": estimated_cost
+    }
+
+@code_bot_router.post("/application")
+async def application_task(config: ApplicationConfig, db: Session = Depends(get_db)):
+    project_path = os.path.join("projects", f"{config.project_name}_{config.user_id}")
+    os.makedirs(project_path, exist_ok=True)
+
+    aider_config = AiderConfig(
+        chat_mode="application",
+        edit_format="diff",
+        model="claude-3-5-sonnet-20240620",
+        prompt=f"Create a {config.app_type} application with these requirements: {config.requirements}",
+        files=[],
+        project_name=config.project_name,
+        user_id=config.user_id
+    )
+
+    output, error = await asyncio.to_thread(run_aider, aider_config, project_path)
+    processed_output = process_aider_output(output.split('\n'))
+
+    estimated_cost = len(config.requirements) * 0.00001  # Example cost calculation
+    update_project_cost(db, config.project_name, config.user_id, estimated_cost)
+
+    return {
+        "project_name": config.project_name,
+        "user_id": config.user_id,
+        "application_task_output": processed_output,
+        "estimated_cost": estimated_cost
+    }
+
+@code_bot_router.post("/language")
+async def language_task(config: LanguageConfig, db: Session = Depends(get_db)):
+    project_path = os.path.join("projects", f"{config.project_name}_{config.user_id}")
+
+    aider_config = AiderConfig(
+        chat_mode="language",
+        edit_format="diff",
+        model="claude-3-5-sonnet-20240620",
+        prompt=f"For {config.language}, perform this task: {config.task}",
+        files=config.files,
+        project_name=config.project_name,
+        user_id=config.user_id
+    )
+
+    output, error = await asyncio.to_thread(run_aider, aider_config, project_path)
+    processed_output = process_aider_output(output.split('\n'))
+
+    estimated_cost = sum(os.path.getsize(os.path.join(project_path, file)) for file in config.files) * 0.00001  # Example cost calculation
+    update_project_cost(db, config.project_name, config.user_id, estimated_cost)
+
+    return {
+        "project_name": config.project_name,
+        "user_id": config.user_id,
+        "language_task_output": processed_output,
+        "estimated_cost": estimated_cost
+    }
+
+@code_bot_router.post("/code-management")
+async def code_management_task(config: CodeManagementConfig, db: Session = Depends(get_db)):
+    project_path = os.path.join("projects", f"{config.project_name}_{config.user_id}")
+
+    aider_config = AiderConfig(
+        chat_mode="code_management",
+        edit_format="diff",
+        model="claude-3-5-sonnet-20240620",
+        prompt=f"Perform this code management task: {config.task}",
+        files=config.files,
+        project_name=config.project_name,
+        user_id=config.user_id
+    )
+
+    output, error = await asyncio.to_thread(run_aider, aider_config, project_path)
+    processed_output = process_aider_output(output.split('\n'))
+
+    estimated_cost = (len(config.task) + sum(os.path.getsize(os.path.join(project_path, file)) for file in config.files)) * 0.00001  # Example cost calculation
+    update_project_cost(db, config.project_name, config.user_id, estimated_cost)
+
+    return {
+        "project_name": config.project_name,
+        "user_id": config.user_id,
+        "code_management_output": processed_output,
         "estimated_cost": estimated_cost
     }
 
