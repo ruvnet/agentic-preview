@@ -2,13 +2,13 @@
 FROM python:3.8-slim
 
 # Set the working directory in the container
-WORKDIR /agentic_platform
+WORKDIR /app
 
 # Copy the entire project directory
-COPY . /agentic_platform
+COPY . /app
 
-# Debug: List contents of /agentic_platform
-RUN ls -la /agentic_platform
+# Debug: List contents of /app
+RUN ls -la /app
 
 # Install Poetry
 RUN pip install --no-cache-dir poetry
@@ -19,11 +19,11 @@ RUN poetry --version
 # Configure Poetry
 RUN poetry config virtualenvs.create false
 
-# Debug: List contents of /agentic_platform again
-RUN ls -la /agentic_platform
+# Change to the agentic_platform directory
+WORKDIR /app/agentic_platform
 
-# Explicitly copy pyproject.toml and poetry.lock
-COPY pyproject.toml poetry.lock* /agentic_platform/
+# Debug: List contents of /app/agentic_platform
+RUN ls -la /app/agentic_platform
 
 # Install dependencies
 RUN if [ -f pyproject.toml ]; then \
