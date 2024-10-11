@@ -7,23 +7,14 @@ WORKDIR /app
 # Copy the entire project directory
 COPY . /app
 
-# Debug: List contents of /app
-RUN ls -la /app
-
 # Install Poetry
 RUN pip install --no-cache-dir poetry
-
-# Debug: Print Poetry version
-RUN poetry --version
 
 # Configure Poetry
 RUN poetry config virtualenvs.create false
 
 # Change to the agentic_platform directory
 WORKDIR /app/agentic_platform
-
-# Debug: List contents of /app/agentic_platform
-RUN ls -la /app/agentic_platform
 
 # Install dependencies
 RUN if [ -f pyproject.toml ]; then \
@@ -34,8 +25,8 @@ RUN if [ -f pyproject.toml ]; then \
         echo "No pyproject.toml or requirements.txt found. Skipping dependency installation."; \
     fi
 
-# Expose port 5000 for the FastAPI application
-EXPOSE 5000
+# Expose port 8080 for the FastAPI application
+EXPOSE 8080
 
-# Run the FastAPI application using Uvicorn
-CMD ["uvicorn", "agentic_platform.main:app", "--host", "0.0.0.0", "--port", "5000"]
+# Run the FastAPI application using Uvicorn on port 8080
+CMD ["uvicorn", "agentic_platform.main:app", "--host", "0.0.0.0", "--port", "8080"]
