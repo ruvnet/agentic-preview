@@ -50,3 +50,20 @@ For each issue found, please provide:
 - An explanation of why the suggested change is beneficial
 
 Remember to provide both positive feedback on well-written code and constructive criticism for areas that need improvement.
+# Code Review Task
+
+## Files to Review
+{{ files }}
+
+Please perform a thorough code review of the specified files:
+
+1. Assess the overall code quality and structure.
+2. Identify any potential bugs or errors.
+3. Evaluate the code's adherence to best practices and coding standards.
+4. Suggest improvements for readability and maintainability.
+5. Check for proper error handling and edge cases.
+6. Assess the efficiency and performance of the code.
+7. Verify the presence and quality of comments and documentation.
+8. Identify any security vulnerabilities or concerns.
+
+Provide detailed feedback and suggestions for each issue found, including code snippets where applicable.

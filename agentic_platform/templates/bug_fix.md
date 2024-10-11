@@ -42,3 +42,23 @@ Please address the reported bug by following these steps:
    - Perform regression testing on related functionality to ensure no unintended side effects.
 
 Remember to follow the project's coding standards and best practices throughout the bug fixing process. If you encounter any challenges or need to make significant changes beyond the scope of the reported bug, please note them in your response.
+# Bug Fix Task
+
+## Bug Description
+{{ bug_description }}
+
+## Files to Investigate
+{{ files }}
+
+Please address the reported bug by following these steps:
+
+1. Analyze the bug description and identify the affected components.
+2. Review the specified files to locate the source of the bug.
+3. Develop a fix for the bug, ensuring it doesn't introduce new issues.
+4. Implement proper error handling if necessary.
+5. Update any affected tests or create new ones to cover the bug scenario.
+6. Verify that the fix resolves the issue without side effects.
+7. Document the changes made and the reasoning behind the fix.
+8. Suggest any preventive measures to avoid similar bugs in the future.
+
+Provide a detailed explanation of the bug, its root cause, and the implemented solution.

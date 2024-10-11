@@ -36,3 +36,18 @@ Please design a high-level system architecture based on the given requirements. 
     - Provide a high-level diagram of the proposed architecture (use ASCII art or describe it textually).
 
 Remember to consider best practices in software architecture design and ensure the proposed solution aligns with the given requirements.
+# System Architecture Design Task
+
+## Requirements
+{{ requirements }}
+
+Please provide a high-level system architecture design based on the given requirements:
+
+1. Outline the overall system architecture.
+2. Identify and describe the main components of the system.
+3. Explain the interactions between components.
+4. Suggest appropriate technologies or frameworks for each component.
+5. Consider scalability, performance, and security aspects.
+6. Provide a diagram or textual representation of the architecture.
+
+Remember to follow best practices for system architecture design and consider industry standards where applicable.
