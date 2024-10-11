@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException, Body, Query, Depends, status
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy.orm import Session
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from .models import DeployRequest, CloneRequest, UpdateProjectRequest, ExploreRequest
+from .utils import execute_command
 from .services import (
     deploy_app, stop_instance, explore_directory, modify_file,
     create_file, remove_file, create_dockerfile, stop_app, stream_aider_output
