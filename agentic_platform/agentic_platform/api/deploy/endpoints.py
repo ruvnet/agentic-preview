@@ -6,7 +6,8 @@ from .models import DeployRequest, CloneRequest, UpdateProjectRequest, ExploreRe
 from .utils import execute_command
 from .services import (
     deploy_app, stop_instance, explore_directory, modify_file,
-    create_file, remove_file, create_dockerfile, stop_app, stream_aider_output
+    create_file, remove_file, create_dockerfile, stop_app, stream_aider_output,
+    get_flyctl_help
 )
 from .utils import get_project_directory, is_fly_installed
 from ...crud import get_db
@@ -418,6 +419,18 @@ async def create_dockerfile_endpoint(repo_id: str = Body(..., embed=True), db: S
             status_code=500,
             content={"detail": str(e), "debug_info": debug_info}
         )
+
+@router.get("/flyctl-help", response_model=Dict[str, str])
+async def flyctl_help():
+    """
+    Get help information for flyctl command.
+    """
+    try:
+        help_text = await get_flyctl_help()
+        return {"help": help_text}
+    except Exception as e:
+        logger.error(f"Error in flyctl_help endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.on_event("shutdown")
 async def cleanup():

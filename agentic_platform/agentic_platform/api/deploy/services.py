@@ -289,3 +289,11 @@ async def stop_app(app_name: str, signal: str = "SIGINT", timeout: int = 30, wai
 async def stream_aider_output(process):
     async for line in process.stdout:
         logger.info(line.decode().strip())
+
+async def get_flyctl_help():
+    try:
+        result = await execute_command(['flyctl', '--help'])
+        return result
+    except Exception as e:
+        logger.error(f"Error getting flyctl help: {e}")
+        raise Exception(f"Error getting flyctl help: {str(e)}")
