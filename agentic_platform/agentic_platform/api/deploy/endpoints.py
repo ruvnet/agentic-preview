@@ -27,6 +27,10 @@ tags_metadata = [
     {"name": "Project", "description": "Operations for managing projects"},
     {"name": "File Operations", "description": "Operations for exploring and modifying files"},
     {"name": "Utility", "description": "Utility operations like flyctl help"},
+    {"name": "App Management", "description": "Operations for managing Fly.io apps"},
+    {"name": "Configuration", "description": "Operations for managing app configurations"},
+    {"name": "Scaling", "description": "Operations for scaling apps"},
+    {"name": "Monitoring", "description": "Operations for monitoring apps"},
 ]
 
 router = APIRouter()
@@ -438,6 +442,102 @@ async def flyctl_help():
         return {"help": help_text}
     except Exception as e:
         logger.error(f"Error in flyctl_help endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/apps", response_model=List[Dict[str, Any]], tags=["App Management"])
+async def list_apps():
+    try:
+        result = await execute_command(['flyctl', 'apps', 'list', '--json'])
+        return json.loads(result)
+    except Exception as e:
+        logger.error(f"Error listing apps: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/apps", response_model=Dict[str, str], tags=["App Management"])
+async def create_app(app_name: str = Body(...)):
+    try:
+        await execute_command(['flyctl', 'apps', 'create', app_name])
+        return {"message": f"App {app_name} created successfully"}
+    except Exception as e:
+        logger.error(f"Error creating app: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/apps/{app_name}", response_model=Dict[str, str], tags=["App Management"])
+async def delete_app(app_name: str):
+    try:
+        await execute_command(['flyctl', 'apps', 'destroy', app_name, '--yes'])
+        return {"message": f"App {app_name} deleted successfully"}
+    except Exception as e:
+        logger.error(f"Error deleting app: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/config/{app_name}", response_model=Dict[str, Any], tags=["Configuration"])
+async def get_config(app_name: str):
+    try:
+        result = await execute_command(['flyctl', 'config', 'show', '--app', app_name, '--json'])
+        return json.loads(result)
+    except Exception as e:
+        logger.error(f"Error getting config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/config/{app_name}", response_model=Dict[str, str], tags=["Configuration"])
+async def update_config(app_name: str, config: Dict[str, Any] = Body(...)):
+    try:
+        for key, value in config.items():
+            await execute_command(['flyctl', 'config', 'set', f"{key}={value}", '--app', app_name])
+        return {"message": f"Configuration for {app_name} updated successfully"}
+    except Exception as e:
+        logger.error(f"Error updating config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/secrets/{app_name}", response_model=Dict[str, str], tags=["Configuration"])
+async def set_secrets(app_name: str, secrets: Dict[str, str] = Body(...)):
+    try:
+        for key, value in secrets.items():
+            await execute_command(['flyctl', 'secrets', 'set', f"{key}={value}", '--app', app_name])
+        return {"message": f"Secrets for {app_name} set successfully"}
+    except Exception as e:
+        logger.error(f"Error setting secrets: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/scale/{app_name}", response_model=Dict[str, Any], tags=["Scaling"])
+async def get_scale(app_name: str):
+    try:
+        result = await execute_command(['flyctl', 'scale', 'show', '--app', app_name, '--json'])
+        return json.loads(result)
+    except Exception as e:
+        logger.error(f"Error getting scale: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/scale/{app_name}", response_model=Dict[str, str], tags=["Scaling"])
+async def update_scale(app_name: str, scale: Dict[str, Any] = Body(...)):
+    try:
+        await execute_command(['flyctl', 'scale', 'vm', 
+                               '--app', app_name, 
+                               '--count', str(scale.get('count', 1)),
+                               '--memory', str(scale.get('memory', 256)),
+                               '--cpus', str(scale.get('cpus', 1))])
+        return {"message": f"Scale for {app_name} updated successfully"}
+    except Exception as e:
+        logger.error(f"Error updating scale: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/releases/{app_name}", response_model=List[Dict[str, Any]], tags=["Monitoring"])
+async def list_releases(app_name: str):
+    try:
+        result = await execute_command(['flyctl', 'releases', 'list', '--app', app_name, '--json'])
+        return json.loads(result)
+    except Exception as e:
+        logger.error(f"Error listing releases: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/version", response_model=Dict[str, str], tags=["Utility"])
+async def get_version():
+    try:
+        version = await execute_command(['flyctl', 'version'])
+        return {"version": version.strip()}
+    except Exception as e:
+        logger.error(f"Error getting version: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.on_event("shutdown")
