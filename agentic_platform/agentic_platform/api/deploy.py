@@ -729,7 +729,27 @@ async def stop_app(app_name: str, signal: str = "SIGINT", timeout: int = 30, wai
         )
 
     try:
-        # First, list all machines for the app
+        # First, check if the app exists
+        check_app_cmd = ["fly", "apps", "list", "--json"]
+        logger.debug(f"Executing command: {' '.join(check_app_cmd)}")
+        
+        check_app_process = await asyncio.create_subprocess_exec(
+            *check_app_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        check_app_stdout, check_app_stderr = await check_app_process.communicate()
+        
+        if check_app_process.returncode != 0:
+            logger.error(f"Failed to list apps. Error: {check_app_stderr.decode()}")
+            raise HTTPException(status_code=500, detail=f"Failed to list apps: {check_app_stderr.decode()}")
+        
+        apps = json.loads(check_app_stdout.decode())
+        if not any(app['Name'] == app_name for app in apps):
+            logger.info(f"App {app_name} not found. It may have been already deleted.")
+            return {"message": f"App {app_name} not found. It may have been already deleted."}
+
+        # If the app exists, proceed with listing and stopping machines
         list_cmd = ["fly", "machines", "list", "-a", app_name, "--json"]
         logger.debug(f"Executing command: {' '.join(list_cmd)}")
         
