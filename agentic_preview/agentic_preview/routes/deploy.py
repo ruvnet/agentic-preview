@@ -1,8 +1,15 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional
+import asyncio
+from datetime import datetime
 
 router = APIRouter()
+
+async def deploy_app_background(deployment: DeploymentRequest, app_name: str):
+    # Placeholder for actual deployment logic
+    await asyncio.sleep(5)  # Simulate deployment process
+    print(f"Deployed {app_name} from {deployment.repo}")
 
 class DeploymentRequest(BaseModel):
     repo: str = Field(..., description="GitHub repository in the format 'username/repo'")
@@ -31,7 +38,6 @@ async def deploy_app(deployment: DeploymentRequest = Body(...)):
         app_name = deployment.app_name or f"preview-{deployment.repo.split('/')[-1].lower()}-{deployment.branch.lower()}-{int(datetime.utcnow().timestamp())}"
         
         # Start the deployment in the background
-        # Note: This is a placeholder. You'll need to implement the actual deployment logic.
         asyncio.create_task(deploy_app_background(deployment, app_name))
         
         return {
