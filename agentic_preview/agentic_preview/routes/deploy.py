@@ -76,7 +76,7 @@ async def stop_app(app_name: str, signal: str = "SIGINT", timeout: int = 30, wai
 @router.post("/deploy", 
              summary="Deploy an application",
              description="Clone a GitHub repository and deploy it to the platform")
-async def deploy_app(deployment: DeploymentRequest = Body(...), background_tasks: BackgroundTasks):
+async def deploy_app(background_tasks: BackgroundTasks, deployment: DeploymentRequest = Body(...)):
     try:
         # Generate a unique app name if not provided
         app_name = deployment.app_name or f"preview-{deployment.repo.split('/')[-1].lower()}-{deployment.branch.lower()}-{int(datetime.utcnow().timestamp())}"
