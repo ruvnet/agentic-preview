@@ -7,6 +7,9 @@ WORKDIR /app
 # Copy the entire project directory
 COPY . /app
 
+# Copy the templates directory
+COPY ./templates /app/templates
+
 # Install Poetry
 RUN pip install --no-cache-dir poetry
 
