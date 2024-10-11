@@ -16,6 +16,7 @@ from ..crud import get_db
 from ..models import Project
 from ..models import Project
 import traceback
+import asyncio
 
 # Define the base directory for projects using pathlib for robust path handling
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -711,6 +712,39 @@ async def delete_project(
     db.commit()
     
     return {"message": "Project deleted successfully"}
+
+@router.post("/stop-app/{app_name}", response_model=Dict[str, Any])
+async def stop_app(app_name: str, signal: str = "SIGINT", timeout: int = 30, wait_timeout: int = 300):
+    try:
+        # Construct the command
+        cmd = [
+            "fly", "machine", "stop",
+            "-a", app_name,
+            "-s", signal,
+            "--timeout", str(timeout),
+            "-w", str(wait_timeout)
+        ]
+
+        # Execute the command
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        # Wait for the command to complete and capture output
+        stdout, stderr = await process.communicate()
+
+        if process.returncode == 0:
+            logger.info(f"Successfully stopped all machines for app {app_name}")
+            return {"message": f"All machines for app {app_name} have been stopped", "output": stdout.decode()}
+        else:
+            logger.error(f"Failed to stop machines for app {app_name}. Error: {stderr.decode()}")
+            raise HTTPException(status_code=500, detail=f"Failed to stop machines: {stderr.decode()}")
+
+    except Exception as e:
+        logger.error(f"Error stopping app {app_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error stopping app: {str(e)}")
 async def stream_aider_output(process):
     async for line in process.stdout:
         logger.info(line.decode().strip())
