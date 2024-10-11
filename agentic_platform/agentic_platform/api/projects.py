@@ -10,7 +10,7 @@ router = APIRouter()
 async def list_projects(db: Session = Depends(get_db)):
     from ..models import Project
     projects = db.query(Project).all()
-    return {"projects": [{"name": project.name, "user_id": project.user_id, "created_at": project.created_at, "last_updated": project.last_updated} for project in projects]}
+    return {"projects": [{"name": project.name, "user_id": project.user_id, "created_at": project.created_at, "updated_at": project.updated_at} for project in projects]}
 
 @router.post("/cleanup")
 async def cleanup(db: Session = Depends(get_db)):
