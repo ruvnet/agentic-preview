@@ -5,9 +5,13 @@ import asyncio
 from datetime import datetime
 import logging
 import json
+import shutil
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+def is_fly_installed():
+    return shutil.which("fly") is not None
 
 class DeploymentRequest(BaseModel):
     repo: str = Field(..., description="GitHub repository in the format 'username/repo'")
@@ -40,6 +44,10 @@ async def deploy_app_background(deployment: DeploymentRequest, app_name: str):
         logger.error(f"Error in deploy_app_background: {str(e)}")
 
 async def stop_app(app_name: str, signal: str = "SIGINT", timeout: int = 30, wait_timeout: int = 300):
+    if not is_fly_installed():
+        logger.error("The 'fly' command is not installed or not in the system PATH.")
+        raise Exception("The 'fly' command is not available. Please contact the administrator.")
+
     try:
         # Check if the app exists
         check_app_cmd = ["fly", "apps", "list", "--json"]
