@@ -6,6 +6,8 @@ from ..crud import get_db
 
 router = APIRouter()
 
+# Remove any existing router.include_router() calls if present
+
 @router.get("/cost-summary")
 async def get_cost_summary(project_name: Optional[str] = None, user_id: Optional[str] = None, db: Session = Depends(get_db)):
     from ..models import Project

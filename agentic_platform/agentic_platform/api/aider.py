@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Remove any existing router.include_router() calls if present
+
 class AiderConfig(BaseModel):
     chat_mode: str = Field("code", example="code")
     edit_format: str = Field("diff", example="diff")

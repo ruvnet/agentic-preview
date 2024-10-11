@@ -34,6 +34,8 @@ tags_metadata = [
 ]
 
 router = APIRouter()
+
+# Remove any existing router.include_router() calls if present
 logger = logging.getLogger(__name__)
 
 deployments = {}

@@ -13,6 +13,8 @@ from ..utils import extract_json_from_output  # Assuming you have a utils module
 
 router = APIRouter()
 
+# Remove any existing router.include_router() calls if present
+
 class AiderConfig(BaseModel):
     chat_mode: str = Field("architect", example="architect")
     edit_format: str = Field("diff", example="diff")
