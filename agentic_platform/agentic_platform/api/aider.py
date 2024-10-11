@@ -119,7 +119,7 @@ async def execute_aider(config: AiderConfig, db: Session = Depends(get_db)):
                 f.write('')  # Create an empty file
 
     # Update project and user data
-    update_project_user_data(config.project_name, config.user_id, db)  # Pass the db argument here
+    update_project_user_data(config.project_name, config.user_id, None, db)  # Pass None for repo_url and db
 
     output, error = await asyncio.to_thread(run_aider, config, project_path)
     
