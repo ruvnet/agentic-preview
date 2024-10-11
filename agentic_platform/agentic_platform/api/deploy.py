@@ -735,7 +735,7 @@ async def stop_app(app_name: str, signal: str = "SIGINT", timeout: int = 30, wai
             "-a", app_name,
             "-s", signal,
             "--timeout", str(timeout),
-            "-w", str(wait_timeout)
+            "-w", f"{wait_timeout}s"  # Add 's' to specify seconds
         ]
         logger.debug(f"Executing command: {' '.join(cmd)}")
 
