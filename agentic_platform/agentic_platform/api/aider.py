@@ -2,7 +2,7 @@ import os
 import subprocess
 import asyncio
 import logging
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional
 from ..crud import get_db, update_project_user_data, update_project_cost
@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+code_bot_router = APIRouter()
 
 class AiderConfig(BaseModel):
     chat_mode: str = Field("code", example="code")
@@ -28,6 +29,22 @@ class AiderConfig(BaseModel):
             if '..' in file or file.startswith('/'):
                 raise ValueError(f"Invalid file path: {file}")
         return v
+
+class ArchitectConfig(BaseModel):
+    project_name: str
+    user_id: str
+    requirements: str
+
+class CodeReviewConfig(BaseModel):
+    project_name: str
+    user_id: str
+    files: List[str]
+
+class BugFixConfig(BaseModel):
+    project_name: str
+    user_id: str
+    bug_description: str
+    files: List[str]
 
 def run_aider(config: AiderConfig, project_path: str):
     command = [
