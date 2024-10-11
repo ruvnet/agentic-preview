@@ -11,12 +11,13 @@ from pydantic import BaseModel
 from fastapi.responses import RedirectResponse, StreamingResponse, JSONResponse
 import logging
 import uuid
+import shutil
 from sqlalchemy.orm import Session
 from ..crud import get_db
 from ..models import Project
-from ..models import Project
 import traceback
 import asyncio
+from fastapi import HTTPException, status
 
 # Define the base directory for projects using pathlib for robust path handling
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -713,8 +714,20 @@ async def delete_project(
     
     return {"message": "Project deleted successfully"}
 
+def is_fly_installed():
+    return shutil.which("fly") is not None
+
 @router.post("/stop-app/{app_name}", response_model=Dict[str, Any])
 async def stop_app(app_name: str, signal: str = "SIGINT", timeout: int = 30, wait_timeout: int = 300):
+    logger.info(f"Attempting to stop app: {app_name} with signal: {signal}, timeout: {timeout}, wait_timeout: {wait_timeout}")
+    
+    if not is_fly_installed():
+        logger.error("The 'fly' command is not installed or not in the system PATH.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="The 'fly' command is not available. Please contact the administrator."
+        )
+
     try:
         # Construct the command
         cmd = [
@@ -724,6 +737,7 @@ async def stop_app(app_name: str, signal: str = "SIGINT", timeout: int = 30, wai
             "--timeout", str(timeout),
             "-w", str(wait_timeout)
         ]
+        logger.debug(f"Executing command: {' '.join(cmd)}")
 
         # Execute the command
         process = await asyncio.create_subprocess_exec(
@@ -734,17 +748,37 @@ async def stop_app(app_name: str, signal: str = "SIGINT", timeout: int = 30, wai
 
         # Wait for the command to complete and capture output
         stdout, stderr = await process.communicate()
+        stdout_str = stdout.decode()
+        stderr_str = stderr.decode()
+
+        logger.debug(f"Command stdout: {stdout_str}")
+        logger.debug(f"Command stderr: {stderr_str}")
 
         if process.returncode == 0:
             logger.info(f"Successfully stopped all machines for app {app_name}")
-            return {"message": f"All machines for app {app_name} have been stopped", "output": stdout.decode()}
+            return {"message": f"All machines for app {app_name} have been stopped", "output": stdout_str}
         else:
-            logger.error(f"Failed to stop machines for app {app_name}. Error: {stderr.decode()}")
-            raise HTTPException(status_code=500, detail=f"Failed to stop machines: {stderr.decode()}")
+            logger.error(f"Failed to stop machines for app {app_name}. Error: {stderr_str}")
+            raise HTTPException(status_code=500, detail=f"Failed to stop machines: {stderr_str}")
 
+    except FileNotFoundError:
+        logger.error("The 'fly' command was not found. Make sure it's installed and in your PATH.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="The 'fly' command was not found. Please contact the administrator."
+        )
+    except PermissionError:
+        logger.error("Permission denied when trying to execute the 'fly' command.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Permission denied when trying to stop the app. Please contact the administrator."
+        )
     except Exception as e:
-        logger.error(f"Error stopping app {app_name}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error stopping app: {str(e)}")
+        logger.exception(f"Unexpected error stopping app {app_name}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred: {str(e)}"
+        )
 async def stream_aider_output(process):
     async for line in process.stdout:
         logger.info(line.decode().strip())
