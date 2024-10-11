@@ -61,3 +61,14 @@ async def redirect_to_docs():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("agentic_platform.main:app", host="0.0.0.0", port=5000)
+from fastapi import FastAPI
+from .api.deploy.endpoints import router as deploy_router, tags_metadata
+
+app = FastAPI(
+    title="Agentic Platform API",
+    description="API for managing deployments, repositories, and projects",
+    version="1.0.0",
+    openapi_tags=tags_metadata
+)
+
+app.include_router(deploy_router, prefix="/api/v1")

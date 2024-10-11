@@ -21,13 +21,21 @@ import uuid
 import os
 import shutil
 
+tags_metadata = [
+    {"name": "Deployment", "description": "Operations related to deploying applications"},
+    {"name": "Repository", "description": "Operations for managing repositories"},
+    {"name": "Project", "description": "Operations for managing projects"},
+    {"name": "File Operations", "description": "Operations for exploring and modifying files"},
+    {"name": "Utility", "description": "Utility operations like flyctl help"},
+]
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 deployments = {}
 cloned_repos = {}
 
-@router.post("/deploy", response_model=Dict[str, str])
+@router.post("/deploy", response_model=Dict[str, str], tags=["Deployment"])
 async def deploy(deploy_request: DeployRequest = Body(...)):
     app_name: Optional[str] = None
     repo_dir: Optional[str] = None
@@ -109,7 +117,7 @@ async def deploy(deploy_request: DeployRequest = Body(...)):
             logger.info(f"Cleaned up repository directory: {repo_dir}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/status/{app_name}", response_model=Dict[str, Any])
+@router.get("/status/{app_name}", response_model=Dict[str, Any], tags=["Deployment"])
 async def check_status(app_name: str):
     try:
         logger.info(f"Checking status for app: {app_name}")
@@ -122,7 +130,7 @@ async def check_status(app_name: str):
         logger.error(f"Error checking app status: {e}")
         raise HTTPException(status_code=500, detail=f"Error checking app status: {str(e)}")
 
-@router.get("/logs/{app_name}", response_class=StreamingResponse)
+@router.get("/logs/{app_name}", response_class=StreamingResponse, tags=["Deployment"])
 async def stream_logs(app_name: str):
     if app_name not in deployments:
         logger.warning(f"No deployment found for app: {app_name}")
@@ -160,7 +168,7 @@ async def stream_logs(app_name: str):
 
     return StreamingResponse(log_streamer(), media_type="text/event-stream")
 
-@router.get("/apps", response_model=Dict[str, str])
+@router.get("/apps", response_model=Dict[str, str], tags=["Deployment"])
 async def list_apps():
     try:
         logger.info("Listing all apps")
@@ -170,7 +178,7 @@ async def list_apps():
         logger.error(f"Error listing apps: {e}")
         return {"detail": f"Error listing apps: {str(e)}. Make sure flyctl is installed and you're authenticated with Fly.io."}
 
-@router.post("/clone", response_model=Dict[str, str])
+@router.post("/clone", response_model=Dict[str, str], tags=["Repository"])
 async def clone_repo(request: CloneRequest = Body(...)):
     try:
         # Create a new project in the database
@@ -214,7 +222,7 @@ async def clone_repo(request: CloneRequest = Body(...)):
         logger.error(f"Error cloning repository: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/repos", response_model=List[Dict[str, Any]])
+@router.get("/repos", response_model=List[Dict[str, Any]], tags=["Repository"])
 async def list_repos(db: Session = Depends(get_db)):
     try:
         projects = db.query(Project).all()
@@ -229,7 +237,7 @@ async def list_repos(db: Session = Depends(get_db)):
         logger.error(f"Error listing repositories: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/explore", response_model=Dict[str, Any])
+@router.post("/explore", response_model=Dict[str, Any], tags=["File Operations"])
 async def explore_repo(request: ExploreRequest = Body(...)):
     if request.repo_id not in cloned_repos:
         logger.warning(f"Repository not found for ID: {request.repo_id}")
@@ -252,7 +260,7 @@ async def explore_repo(request: ExploreRequest = Body(...)):
         logger.error(f"Invalid action: {request.action}")
         raise HTTPException(status_code=400, detail="Invalid action")
 
-@router.get("/projects", response_model=Dict[str, Any])
+@router.get("/projects", response_model=Dict[str, Any], tags=["Project"])
 async def list_projects(db: Session = Depends(get_db)):
     try:
         projects = db.query(Project).all()
@@ -284,7 +292,7 @@ async def list_projects(db: Session = Depends(get_db)):
         logger.error(f"Error listing projects: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/projects/{project_id}", response_model=Dict[str, str])
+@router.put("/projects/{project_id}", response_model=Dict[str, str], tags=["Project"])
 async def update_project(
     project_id: str,
     request: UpdateProjectRequest,
@@ -304,7 +312,7 @@ async def update_project(
     
     return {"message": "Project updated successfully"}
 
-@router.delete("/projects/{project_id}", response_model=Dict[str, str])
+@router.delete("/projects/{project_id}", response_model=Dict[str, str], tags=["Project"])
 async def delete_project(
     project_id: str,
     db: Session = Depends(get_db)
@@ -322,7 +330,7 @@ async def delete_project(
     
     return {"message": "Project deleted successfully"}
 
-@router.post("/stop-app/{app_name}", response_model=Dict[str, Any])
+@router.post("/stop-app/{app_name}", response_model=Dict[str, Any], tags=["Deployment"])
 async def stop_application(app_name: str, signal: str = "SIGINT", timeout: int = 30, wait_timeout: int = 300):
     try:
         result = await stop_app(app_name, signal, timeout, wait_timeout)
@@ -333,7 +341,7 @@ async def stop_application(app_name: str, signal: str = "SIGINT", timeout: int =
         logger.error(f"Error stopping app {app_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error stopping app: {str(e)}")
 
-@router.post("/docker", response_model=Dict[str, Any])
+@router.post("/docker", response_model=Dict[str, Any], tags=["File Operations"])
 async def create_dockerfile_endpoint(repo_id: str = Body(..., embed=True), db: Session = Depends(get_db)):
     debug_info = {}
     try:
@@ -420,7 +428,7 @@ async def create_dockerfile_endpoint(repo_id: str = Body(..., embed=True), db: S
             content={"detail": str(e), "debug_info": debug_info}
         )
 
-@router.get("/flyctl-help", response_model=Dict[str, str])
+@router.get("/flyctl-help", response_model=Dict[str, str], tags=["Utility"])
 async def flyctl_help():
     """
     Get help information for flyctl command.
