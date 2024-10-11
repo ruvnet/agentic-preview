@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, List, Optional
 from .models import DeployRequest, CloneRequest, UpdateProjectRequest, ExploreRequest
 from .utils import execute_command
+from .utils import execute_command
 from .services import (
     deploy_app, stop_instance, explore_directory, modify_file,
     create_file, remove_file, create_dockerfile, stop_app, stream_aider_output,
@@ -127,11 +128,13 @@ async def deploy(deploy_request: DeployRequest = Body(...)):
 async def check_status(app_name: str):
     try:
         logger.info(f"Checking status for app: {app_name}")
-        if app_name in deployments:
-            return deployments[app_name]
-        else:
-            logger.warning(f"No deployment found for app: {app_name}")
-            raise HTTPException(status_code=404, detail=f"No deployment found for app: {app_name}")
+        status_output = await execute_command(['flyctl', 'status', '-a', app_name, '--json'])
+        status_data = json.loads(status_output)
+        
+        return {
+            "app_name": app_name,
+            "status": status_data
+        }
     except Exception as e:
         logger.error(f"Error checking app status: {e}")
         raise HTTPException(status_code=500, detail=f"Error checking app status: {str(e)}")
