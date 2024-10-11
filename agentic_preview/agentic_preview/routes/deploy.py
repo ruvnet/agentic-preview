@@ -4,6 +4,7 @@ from typing import List, Optional
 import asyncio
 from datetime import datetime
 import logging
+import json
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -40,7 +41,27 @@ async def deploy_app_background(deployment: DeploymentRequest, app_name: str):
 
 async def stop_app(app_name: str, signal: str = "SIGINT", timeout: int = 30, wait_timeout: int = 300):
     try:
-        # Construct the command
+        # Check if the app exists
+        check_app_cmd = ["fly", "apps", "list", "--json"]
+        logger.debug(f"Executing command: {' '.join(check_app_cmd)}")
+        
+        check_app_process = await asyncio.create_subprocess_exec(
+            *check_app_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        check_app_stdout, check_app_stderr = await check_app_process.communicate()
+        
+        if check_app_process.returncode != 0:
+            logger.error(f"Failed to list apps. Error: {check_app_stderr.decode()}")
+            return
+        
+        apps = json.loads(check_app_stdout.decode())
+        if not any(app['Name'] == app_name for app in apps):
+            logger.info(f"App {app_name} not found. It may have been already deleted.")
+            return
+
+        # Construct the command to stop machines
         cmd = [
             "fly", "machine", "stop",
             "-a", app_name,
