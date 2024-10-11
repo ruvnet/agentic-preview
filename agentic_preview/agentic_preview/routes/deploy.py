@@ -6,6 +6,24 @@ from datetime import datetime
 
 router = APIRouter()
 
+class DeploymentRequest(BaseModel):
+    repo: str = Field(..., description="GitHub repository in the format 'username/repo'")
+    branch: str = Field(..., description="Git branch to deploy")
+    args: Optional[List[str]] = Field(default=[], description="Additional arguments for deployment")
+    memory: Optional[int] = Field(default=2048, description="Memory allocation in MB")
+    app_name: Optional[str] = Field(default=None, description="Optional custom name for the application")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "repo": "ruvnet/agentic_preview",
+                "branch": "main",
+                "args": ["--build-arg", "ENV=production"],
+                "memory": 2048,
+                "app_name": "my-app"
+            }
+        }
+
 async def deploy_app_background(deployment: DeploymentRequest, app_name: str):
     # Placeholder for actual deployment logic
     await asyncio.sleep(5)  # Simulate deployment process
