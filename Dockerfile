@@ -4,16 +4,13 @@ FROM python:3.8-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy only the necessary files
-COPY pyproject.toml poetry.lock ./
+# Copy the entire project directory
+COPY . .
 
 # Install Poetry and dependencies
 RUN pip install --no-cache-dir poetry && \
     poetry config virtualenvs.create false && \
-    poetry install --no-dev --no-interaction --no-ansi
-
-# Copy the application code
-COPY agentic_preview ./agentic_preview
+    poetry install --only main --no-interaction --no-ansi
 
 # Expose port 5000 for the FastAPI application
 EXPOSE 5000
