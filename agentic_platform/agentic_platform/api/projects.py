@@ -6,9 +6,7 @@ from typing import Optional
 
 router = APIRouter()
 
-# Remove any existing router.include_router() calls if present
-
-@router.get("/projects")
+@router.get("/")
 async def list_projects(db: Session = Depends(get_db)):
     from ..models import Project
     projects = db.query(Project).all()
