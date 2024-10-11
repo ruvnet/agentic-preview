@@ -135,3 +135,88 @@ async def execute_aider(config: AiderConfig, db: Session = Depends(get_db)):
         "aider_output": processed_output,
         "estimated_cost": estimated_cost
     }
+
+@code_bot_router.post("/architect")
+async def architect_mode(config: ArchitectConfig, db: Session = Depends(get_db)):
+    project_path = os.path.join("projects", f"{config.project_name}_{config.user_id}")
+    os.makedirs(project_path, exist_ok=True)
+
+    aider_config = AiderConfig(
+        chat_mode="architect",
+        edit_format="diff",
+        model="claude-3-5-sonnet-20240620",
+        prompt=f"Act as a software architect. Design a high-level system architecture based on these requirements: {config.requirements}",
+        files=[],
+        project_name=config.project_name,
+        user_id=config.user_id
+    )
+
+    output, error = await asyncio.to_thread(run_aider, aider_config, project_path)
+    processed_output = process_aider_output(output.split('\n'))
+
+    estimated_cost = len(config.requirements) * 0.00001  # Example cost calculation
+    update_project_cost(db, config.project_name, config.user_id, estimated_cost)
+
+    return {
+        "project_name": config.project_name,
+        "user_id": config.user_id,
+        "architect_output": processed_output,
+        "estimated_cost": estimated_cost
+    }
+
+@code_bot_router.post("/code-review")
+async def code_review(config: CodeReviewConfig, db: Session = Depends(get_db)):
+    project_path = os.path.join("projects", f"{config.project_name}_{config.user_id}")
+
+    aider_config = AiderConfig(
+        chat_mode="code_review",
+        edit_format="diff",
+        model="claude-3-5-sonnet-20240620",
+        prompt="Perform a code review on the following files. Provide feedback on code quality, potential bugs, and suggestions for improvement.",
+        files=config.files,
+        project_name=config.project_name,
+        user_id=config.user_id
+    )
+
+    output, error = await asyncio.to_thread(run_aider, aider_config, project_path)
+    processed_output = process_aider_output(output.split('\n'))
+
+    estimated_cost = sum(os.path.getsize(os.path.join(project_path, file)) for file in config.files) * 0.00001  # Example cost calculation
+    update_project_cost(db, config.project_name, config.user_id, estimated_cost)
+
+    return {
+        "project_name": config.project_name,
+        "user_id": config.user_id,
+        "code_review_output": processed_output,
+        "estimated_cost": estimated_cost
+    }
+
+@code_bot_router.post("/bug-fix")
+async def bug_fix(config: BugFixConfig, db: Session = Depends(get_db)):
+    project_path = os.path.join("projects", f"{config.project_name}_{config.user_id}")
+
+    aider_config = AiderConfig(
+        chat_mode="bug_fix",
+        edit_format="diff",
+        model="claude-3-5-sonnet-20240620",
+        prompt=f"Fix the following bug in the specified files: {config.bug_description}",
+        files=config.files,
+        project_name=config.project_name,
+        user_id=config.user_id
+    )
+
+    output, error = await asyncio.to_thread(run_aider, aider_config, project_path)
+    processed_output = process_aider_output(output.split('\n'))
+
+    estimated_cost = (len(config.bug_description) + sum(os.path.getsize(os.path.join(project_path, file)) for file in config.files)) * 0.00001  # Example cost calculation
+    update_project_cost(db, config.project_name, config.user_id, estimated_cost)
+
+    return {
+        "project_name": config.project_name,
+        "user_id": config.user_id,
+        "bug_fix_output": processed_output,
+        "estimated_cost": estimated_cost
+    }
+
+# Include the code_bot_router in the main router
+router.include_router(code_bot_router, prefix="/code-bot", tags=["Code Bot Capabilities"])
