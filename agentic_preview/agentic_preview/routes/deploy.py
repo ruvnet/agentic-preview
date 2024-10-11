@@ -26,8 +26,21 @@ class DeploymentRequest(BaseModel):
              summary="Deploy an application",
              description="Clone a GitHub repository and deploy it to the platform")
 async def deploy_app(deployment: DeploymentRequest = Body(...)):
-    # Your existing deployment logic here
-    return {"message": "Deployment request received", "deployment": deployment}
+    try:
+        # Generate a unique app name if not provided
+        app_name = deployment.app_name or f"preview-{deployment.repo.split('/')[-1].lower()}-{deployment.branch.lower()}-{int(datetime.utcnow().timestamp())}"
+        
+        # Start the deployment in the background
+        # Note: This is a placeholder. You'll need to implement the actual deployment logic.
+        asyncio.create_task(deploy_app_background(deployment, app_name))
+        
+        return {
+            "app_name": app_name,
+            "message": "Deployment started.",
+            "status_url": f"/status/{app_name}"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/status/{app_name}", 
             summary="Check deployment status",
