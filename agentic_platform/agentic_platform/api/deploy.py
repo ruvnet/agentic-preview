@@ -729,37 +729,54 @@ async def stop_app(app_name: str, signal: str = "SIGINT", timeout: int = 30, wai
         )
 
     try:
-        # Construct the command
-        cmd = [
-            "fly", "machine", "stop",
-            "-a", app_name,
-            "-s", signal,
-            "--timeout", str(timeout),
-            "-w", f"{wait_timeout}s"  # Add 's' to specify seconds
-        ]
-        logger.debug(f"Executing command: {' '.join(cmd)}")
-
-        # Execute the command
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
+        # First, list all machines for the app
+        list_cmd = ["fly", "machines", "list", "-a", app_name, "--json"]
+        logger.debug(f"Executing command: {' '.join(list_cmd)}")
+        
+        list_process = await asyncio.create_subprocess_exec(
+            *list_cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
+        list_stdout, list_stderr = await list_process.communicate()
+        
+        if list_process.returncode != 0:
+            logger.error(f"Failed to list machines for app {app_name}. Error: {list_stderr.decode()}")
+            raise HTTPException(status_code=500, detail=f"Failed to list machines: {list_stderr.decode()}")
+        
+        machines = json.loads(list_stdout.decode())
+        
+        if not machines:
+            logger.info(f"No machines found for app {app_name}")
+            return {"message": f"No machines found for app {app_name}"}
+        
+        # Stop each machine
+        for machine in machines:
+            machine_id = machine['id']
+            stop_cmd = [
+                "fly", "machine", "stop",
+                machine_id,
+                "-a", app_name,
+                "-s", signal,
+                "--timeout", str(timeout),
+                "-w", f"{wait_timeout}s"
+            ]
+            logger.debug(f"Executing command: {' '.join(stop_cmd)}")
+            
+            stop_process = await asyncio.create_subprocess_exec(
+                *stop_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stop_stdout, stop_stderr = await stop_process.communicate()
+            
+            if stop_process.returncode != 0:
+                logger.error(f"Failed to stop machine {machine_id} for app {app_name}. Error: {stop_stderr.decode()}")
+                raise HTTPException(status_code=500, detail=f"Failed to stop machine {machine_id}: {stop_stderr.decode()}")
+            
+            logger.info(f"Successfully stopped machine {machine_id} for app {app_name}")
 
-        # Wait for the command to complete and capture output
-        stdout, stderr = await process.communicate()
-        stdout_str = stdout.decode()
-        stderr_str = stderr.decode()
-
-        logger.debug(f"Command stdout: {stdout_str}")
-        logger.debug(f"Command stderr: {stderr_str}")
-
-        if process.returncode == 0:
-            logger.info(f"Successfully stopped all machines for app {app_name}")
-            return {"message": f"All machines for app {app_name} have been stopped", "output": stdout_str}
-        else:
-            logger.error(f"Failed to stop machines for app {app_name}. Error: {stderr_str}")
-            raise HTTPException(status_code=500, detail=f"Failed to stop machines: {stderr_str}")
+        return {"message": f"All machines for app {app_name} have been stopped"}
 
     except FileNotFoundError:
         logger.error("The 'fly' command was not found. Make sure it's installed and in your PATH.")
